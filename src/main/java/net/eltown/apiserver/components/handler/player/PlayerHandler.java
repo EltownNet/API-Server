@@ -6,11 +6,15 @@ import net.eltown.apiserver.Server;
 import net.eltown.apiserver.components.handler.player.data.SyncPlayer;
 import net.eltown.apiserver.components.tinyrabbit.TinyRabbitListener;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class PlayerHandler {
 
     private final TinyRabbitListener listener;
     private final Server server;
     private final PlayerProvider provider;
+    private final List<String> isSynced = new ArrayList<>();
 
     @SneakyThrows
     public PlayerHandler(final Server server, final Connection connection) {
@@ -47,6 +51,7 @@ public class PlayerHandler {
                                 true
                         );
                         this.provider.set(request[1], set);
+                        this.isSynced.remove(request[1]);
                         break;
                     case REQUEST_SETNOSYNC:
                         SyncPlayer player = this.provider.get(request[1]);
@@ -65,7 +70,8 @@ public class PlayerHandler {
                 switch (PlayerCalls.valueOf(request.getKey())) {
                     case REQUEST_SYNC:
                         final SyncPlayer syncPlayer = this.provider.get(request.getData()[1]);
-                        if (syncPlayer.isCanSync()) {
+                        if (syncPlayer.isCanSync() && !isSynced.contains(request.getData()[1])) {
+                            this.isSynced.add(request.getData()[1]);
                             request.answer(PlayerCalls.GOT_SYNC.name(), syncPlayer.getInventory(), syncPlayer.getArmorInventory(), syncPlayer.getEnderchest(), syncPlayer.getFoodLevel(), syncPlayer.getSaturation(), syncPlayer.getExhaustion(), syncPlayer.getSelectedSlot(), syncPlayer.getPotionEffects(), syncPlayer.getTotalExperience(), syncPlayer.getLevel(), syncPlayer.getExperience(), syncPlayer.getGamemode(), syncPlayer.getFlying());
                         } else {
                             request.answer(PlayerCalls.GOT_NOSYNC.name(), request.getData()[1]);

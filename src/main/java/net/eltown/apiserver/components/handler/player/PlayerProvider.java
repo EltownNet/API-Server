@@ -8,7 +8,9 @@ import net.eltown.apiserver.components.config.Config;
 import net.eltown.apiserver.components.handler.player.data.SyncPlayer;
 import org.bson.Document;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
@@ -48,7 +50,7 @@ public class PlayerProvider {
     }
 
     public SyncPlayer get(String id) {
-        return players.getOrDefault(id, new SyncPlayer("", "", "", "20", "20", "20", "0", "", "0", "0", "0", "survival", "false", true));
+        return players.getOrDefault(id, new SyncPlayer("", "", "", "20", "20", "20", "0", "", "0", "0", "0", "SURVIVAL", "false", true));
     }
 
     public void set(String id, SyncPlayer player) {
