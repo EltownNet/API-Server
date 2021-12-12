@@ -5,6 +5,7 @@ import com.mongodb.MongoClientURI;
 import com.mongodb.client.MongoCollection;
 import lombok.SneakyThrows;
 import net.eltown.apiserver.Server;
+import net.eltown.apiserver.components.Provider;
 import net.eltown.apiserver.components.config.Config;
 import net.eltown.apiserver.components.handler.crates.data.CratePlayer;
 import net.eltown.apiserver.components.handler.crates.data.CrateReward;
@@ -14,26 +15,17 @@ import org.bson.Document;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
-public class CratesProvider {
-
-    private final MongoClient client;
-    private final MongoCollection<Document> crateDataCollection, cratePlayerDataCollection;
-    public final TinyRabbit tinyRabbit;
+public class CratesProvider extends Provider {
 
     public final HashMap<String, CrateReward> cachedCrateRewards = new HashMap<>();
     public final HashMap<String, CratePlayer> cachedCratePlayers = new HashMap<>();
 
     @SneakyThrows
     public CratesProvider(final Server server) {
-        final Config config = server.getConfig();
-        this.client = new MongoClient(new MongoClientURI(config.getString("MongoDB.Uri")));
-        this.crateDataCollection = this.client.getDatabase(config.getString("MongoDB.GroupDB")).getCollection("crate_data");
-        this.cratePlayerDataCollection = this.client.getDatabase(config.getString("MongoDB.GroupDB")).getCollection("crate_player_data");
-
-        this.tinyRabbit = new TinyRabbit("localhost", "API/Crates[Main]");
+        super(server, "crate_data", "crate_player_data");
 
         server.log("Crate-Reward-Daten werden in den Cache geladen...");
-        for (final Document document : this.crateDataCollection.find()) {
+        for (final Document document : this.getCollection("crate_data").find()) {
             this.cachedCrateRewards.put(document.getString("_id"),
                     new CrateReward(
                             document.getString("_id"),
@@ -47,7 +39,7 @@ public class CratesProvider {
         server.log(this.cachedCrateRewards.size() + " Crate-Reward-Daten wurden in den Cache geladen...");
 
         server.log("Crate-Player-Daten werden in den Cache geladen...");
-        for (final Document document : this.cratePlayerDataCollection.find()) {
+        for (final Document document : this.getCollection("crate_player_data").find()) {
             final Map<String, Integer> data = new HashMap<>();
             document.getList("data", String.class).forEach(e -> {
                 data.put(e.split(":")[0], Integer.parseInt(e.split(":")[1]));
@@ -70,7 +62,7 @@ public class CratesProvider {
             this.cachedCratePlayers.put(player, new CratePlayer(player, map));
 
             CompletableFuture.runAsync(() -> {
-                this.cratePlayerDataCollection.insertOne(new Document("_id", player).append("data", new ArrayList<>(Collections.singletonList("null:0"))));
+                this.getCollection("crate_player_data").insertOne(new Document("_id", player).append("data", new ArrayList<>(Collections.singletonList("null:0"))));
             });
         }
     }
@@ -94,7 +86,7 @@ public class CratesProvider {
                 set.add(k + ":" + v);
             });
 
-            this.cratePlayerDataCollection.updateOne(new Document("_id", player), new Document("$set", new Document("data", set)));
+            this.getCollection("crate_player_data").updateOne(new Document("_id", player), new Document("$set", new Document("data", set)));
         });
     }
 
@@ -102,7 +94,7 @@ public class CratesProvider {
         this.cachedCrateRewards.put(id, new CrateReward(id, crate, displayName, chance, data));
 
         CompletableFuture.runAsync(() -> {
-            this.crateDataCollection.insertOne(new Document("_id", id)
+            this.getCollection("crate_data").insertOne(new Document("_id", id)
                     .append("crate", crate)
                     .append("displayName", displayName)
                     .append("chance", chance)
@@ -114,7 +106,7 @@ public class CratesProvider {
     public void deleteCrateReward(final String id) {
         this.cachedCrateRewards.remove(id);
 
-        CompletableFuture.runAsync(() -> this.crateDataCollection.findOneAndDelete(new Document("_id", id)));
+        CompletableFuture.runAsync(() -> this.getCollection("crate_data").findOneAndDelete(new Document("_id", id)));
     }
 
     public void updateCrateReward(final String id, final String crate, final String displayName, final int chance, final String data) {
@@ -125,7 +117,7 @@ public class CratesProvider {
         crateReward.setData(data);
 
         CompletableFuture.runAsync(() -> {
-            this.crateDataCollection.updateOne(new Document("_id", id), new Document("$set", new Document("crate", crate).append("displayName", displayName).append("chance", chance).append("data", data)));
+            this.getCollection("crate_data").updateOne(new Document("_id", id), new Document("$set", new Document("crate", crate).append("displayName", displayName).append("chance", chance).append("data", data)));
         });
     }
 

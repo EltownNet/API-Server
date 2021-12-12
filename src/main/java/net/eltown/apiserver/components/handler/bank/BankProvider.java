@@ -1,15 +1,10 @@
 package net.eltown.apiserver.components.handler.bank;
 
-import com.mongodb.MongoClient;
-import com.mongodb.MongoClientURI;
-import com.mongodb.client.MongoCollection;
-import lombok.AllArgsConstructor;
 import lombok.SneakyThrows;
 import net.eltown.apiserver.Server;
-import net.eltown.apiserver.components.config.Config;
+import net.eltown.apiserver.components.Provider;
 import net.eltown.apiserver.components.handler.bank.data.BankAccount;
 import net.eltown.apiserver.components.handler.bank.data.BankLog;
-import net.eltown.apiserver.components.tinyrabbit.TinyRabbit;
 import org.bson.Document;
 
 import java.text.DateFormat;
@@ -18,25 +13,16 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiConsumer;
 
-@AllArgsConstructor
-public class BankProvider {
-
-    private final MongoClient client;
-    private final MongoCollection<Document> bankCollection;
-    public final TinyRabbit tinyRabbit;
+public class BankProvider extends Provider {
 
     public final LinkedHashMap<String, BankAccount> bankAccounts = new LinkedHashMap<>();
 
     @SneakyThrows
     public BankProvider(final Server server) {
-        final Config config = server.getConfig();
-        this.client = new MongoClient(new MongoClientURI(config.getString("MongoDB.Uri")));
-        this.bankCollection = this.client.getDatabase(config.getString("MongoDB.GroupDB")).getCollection("bank_accounts");
-
-        this.tinyRabbit = new TinyRabbit("localhost", "API/Bank[Main]");
+        super(server, "bank_accounts");
 
         server.log("Bankkonten werden in den Cache geladen...");
-        for (final Document document : this.bankCollection.find()) {
+        for (final Document document : this.getCollection("bank_accounts").find()) {
             final List<String> dLogs = document.getList("logs", String.class);
             final List<BankLog> bankLogs = new ArrayList<>();
 
@@ -64,7 +50,7 @@ public class BankProvider {
         this.bankAccounts.put(account, new BankAccount(account, account, owner, password, 0.0d, new ArrayList<>()));
 
         CompletableFuture.runAsync(() -> {
-            this.bankCollection.insertOne(new Document("_id", account)
+            this.getCollection("bank_accounts").insertOne(new Document("_id", account)
                     .append("displayName", account)
                     .append("owner", owner)
                     .append("password", password)
@@ -86,10 +72,10 @@ public class BankProvider {
         bankAccount.setBankLogs(logs);
 
         CompletableFuture.runAsync(() -> {
-            final List<String> dList = this.bankCollection.find(new Document("_id", account)).first().getList("logs", String.class);
+            final List<String> dList = this.getCollection("bank_accounts").find(new Document("_id", account)).first().getList("logs", String.class);
             dList.add(logId + ";-;" + title + ";-;" + details + ";-;" + this.getDate());
 
-            this.bankCollection.updateOne(new Document("_id", account), new Document("$set", new Document("logs", dList)));
+            this.getCollection("bank_accounts").updateOne(new Document("_id", account), new Document("$set", new Document("logs", dList)));
         });
     }
 
@@ -102,7 +88,7 @@ public class BankProvider {
         bankAccount.setBalance(bankAccount.getBalance() - amount);
 
         CompletableFuture.runAsync(() -> {
-            this.bankCollection.updateOne(new Document("_id", account), new Document("$set", new Document("balance", bankAccount.getBalance())));
+            this.getCollection("bank_accounts").updateOne(new Document("_id", account), new Document("$set", new Document("balance", bankAccount.getBalance())));
         });
     }
 
@@ -111,7 +97,7 @@ public class BankProvider {
         bankAccount.setBalance(bankAccount.getBalance() + amount);
 
         CompletableFuture.runAsync(() -> {
-            this.bankCollection.updateOne(new Document("_id", account), new Document("$set", new Document("balance", bankAccount.getBalance())));
+            this.getCollection("bank_accounts").updateOne(new Document("_id", account), new Document("$set", new Document("balance", bankAccount.getBalance())));
         });
     }
 
@@ -120,7 +106,7 @@ public class BankProvider {
         bankAccount.setBalance(amount);
 
         CompletableFuture.runAsync(() -> {
-            this.bankCollection.updateOne(new Document("_id", account), new Document("$set", new Document("balance", bankAccount.getBalance())));
+            this.getCollection("bank_accounts").updateOne(new Document("_id", account), new Document("$set", new Document("balance", bankAccount.getBalance())));
         });
     }
 
@@ -129,7 +115,7 @@ public class BankProvider {
         bankAccount.setPassword(password);
 
         CompletableFuture.runAsync(() -> {
-            this.bankCollection.updateOne(new Document("_id", account), new Document("$set", new Document("password", bankAccount.getPassword())));
+            this.getCollection("bank_accounts").updateOne(new Document("_id", account), new Document("$set", new Document("password", bankAccount.getPassword())));
         });
     }
 
@@ -138,7 +124,7 @@ public class BankProvider {
         bankAccount.setDisplayName(displayName);
 
         CompletableFuture.runAsync(() -> {
-            this.bankCollection.updateOne(new Document("_id", account), new Document("$set", new Document("displayName", bankAccount.getDisplayName())));
+            this.getCollection("bank_accounts").updateOne(new Document("_id", account), new Document("$set", new Document("displayName", bankAccount.getDisplayName())));
         });
     }
 

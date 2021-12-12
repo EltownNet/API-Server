@@ -2,39 +2,33 @@ package net.eltown.apiserver.components.handler.drugs;
 
 import lombok.SneakyThrows;
 import net.eltown.apiserver.Server;
+import net.eltown.apiserver.components.Handler;
 import net.eltown.apiserver.components.handler.drugs.data.Delivery;
-import net.eltown.apiserver.components.tinyrabbit.TinyRabbitListener;
 
 import java.util.SplittableRandom;
 import java.util.stream.Collectors;
 
-public class DrugHandler {
+public class DrugHandler extends Handler<DrugProvider> {
 
-    private final Server server;
-    private final DrugProvider provider;
-    private final TinyRabbitListener listener;
     private final SplittableRandom random = new SplittableRandom();
 
     @SneakyThrows
     public DrugHandler(final Server server) {
-        this.server = server;
-        this.provider = new DrugProvider(server);
-        this.listener = new TinyRabbitListener("localhost");
-        this.listener.throwExceptions(true);
+        super(server, "DrugHandler", new DrugProvider(server));
         this.startCallbacking();
         this.startReceiving();
     }
 
     public void startCallbacking() {
-        this.server.getExecutor().execute(() -> {
-            this.listener.callback((request) -> {
+        this.getServer().getExecutor().execute(() -> {
+            this.getTinyRabbitListener().callback((request) -> {
 
                 switch (DrugCalls.valueOf(request.getKey())) {
                     case GET_DELIVERIES:
 
                         final StringBuilder sb = new StringBuilder();
 
-                        this.provider.getDeliveries().values().stream().filter(d -> d.getReceiver().equalsIgnoreCase(request.getData()[1])).collect(Collectors.toSet()).forEach((d) -> {
+                        this.getProvider().getDeliveries().values().stream().filter(d -> d.getReceiver().equalsIgnoreCase(request.getData()[1])).collect(Collectors.toSet()).forEach((d) -> {
                             sb.append(d.getId())
                                     .append(">>")
                                     .append(d.getReceiver())
@@ -61,31 +55,28 @@ public class DrugHandler {
     }
 
     public void startReceiving() {
-        this.server.getExecutor().execute(() -> {
-            this.listener.receive((delivery) -> {
+        this.getServer().getExecutor().execute(() -> {
+            this.getTinyRabbitListener().receive((delivery) -> {
 
                 final String[] data = delivery.getData();
 
                 switch (DrugCalls.valueOf(delivery.getKey())) {
-                    case ADD_DELIVERY:
+                    case ADD_DELIVERY -> {
                         final String receiver = data[1];
                         final String type = data[2];
                         final String quality = data[3];
                         final int amount = Integer.parseInt(data[4]);
                         final int time = Integer.parseInt(data[5]);
-
-                        this.provider.addDelivery(new Delivery(this.generateID(), receiver, type, quality, amount, time, time, false));
-                        break;
-                    case REMOVE_DELIVERY:
-                        this.provider.removeDelivery(this.provider.getDeliveries().get(delivery.getData()[1]));
-                        break;
+                        this.getProvider().addDelivery(new Delivery(this.generateID(), receiver, type, quality, amount, time, time, false));
+                    }
+                    case REMOVE_DELIVERY -> this.getProvider().removeDelivery(this.getProvider().getDeliveries().get(delivery.getData()[1]));
                 }
             }, "API/Drugs[Receive]", "api.drugs.receive");
         });
     }
 
     private String generateID() {
-        return this.provider.getDeliveries().size() + "-" + random.nextInt(9000000) + 1000000 + "-" + random.nextInt(90000) + 10000;
+        return this.getProvider().getDeliveries().size() + "-" + random.nextInt(9000000) + 1000000 + "-" + random.nextInt(90000) + 10000;
     }
 
 }

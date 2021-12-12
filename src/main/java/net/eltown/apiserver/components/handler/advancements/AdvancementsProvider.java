@@ -17,6 +17,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
+@Deprecated
 @AllArgsConstructor
 public class AdvancementsProvider {
 

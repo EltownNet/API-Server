@@ -5,6 +5,7 @@ import com.mongodb.MongoClientURI;
 import com.mongodb.client.MongoCollection;
 import lombok.SneakyThrows;
 import net.eltown.apiserver.Server;
+import net.eltown.apiserver.components.Provider;
 import net.eltown.apiserver.components.config.Config;
 import net.eltown.apiserver.components.handler.chestshops.data.ChestShop;
 import net.eltown.apiserver.components.handler.chestshops.data.ChestShopLicense;
@@ -14,26 +15,17 @@ import org.bson.Document;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
-public class ChestshopProvider {
-
-    private final MongoClient client;
-    private final MongoCollection<Document> chestShopCollection, licenseCollection;
-    public final TinyRabbit tinyRabbit;
+public class ChestshopProvider extends Provider {
 
     public final HashMap<Long, ChestShop> cachedChestShops = new HashMap<>();
     public final HashMap<String, ChestShopLicense> cachedChestShopLicenses = new HashMap<>();
 
     @SneakyThrows
     public ChestshopProvider(final Server server) {
-        final Config config = server.getConfig();
-        this.client = new MongoClient(new MongoClientURI(config.getString("MongoDB.Uri")));
-        this.chestShopCollection = this.client.getDatabase(config.getString("MongoDB.GroupDB")).getCollection("chestshop_data");
-        this.licenseCollection = this.client.getDatabase(config.getString("MongoDB.GroupDB")).getCollection("chestshop_licenses");
-
-        this.tinyRabbit = new TinyRabbit("localhost", "API/ChestShop[Main]");
+        super(server, "chestshop_data", "chestshop_licenses");
 
         server.log("ChestShops werden in den Cache geladen...");
-        for (final Document document : this.chestShopCollection.find()) {
+        for (final Document document : this.getCollection("chestshop_data").find()) {
             this.cachedChestShops.put(document.getLong("_id"), new ChestShop(
                     document.getLong("_id"),
                     document.getDouble("signX"),
@@ -54,7 +46,7 @@ public class ChestshopProvider {
         server.log(this.cachedChestShops.size() + " ChestShops wurden in den Cache geladen...");
 
         server.log("ChestShop-Lizenzen werden in den Cache geladen...");
-        for (final Document document : this.licenseCollection.find()) {
+        for (final Document document : this.getCollection("chestshop_licenses").find()) {
             this.cachedChestShopLicenses.put(document.getString("_id"), new ChestShopLicense(
                     document.getString("_id"),
                     document.getString("license"),
@@ -69,7 +61,7 @@ public class ChestshopProvider {
 
         CompletableFuture.runAsync(() -> {
             try {
-                this.chestShopCollection.insertOne(new Document("_id", id)
+                this.getCollection("chestshop_data").insertOne(new Document("_id", id)
                         .append("signX", signX)
                         .append("signY", signY)
                         .append("signZ", signZ)
@@ -94,7 +86,7 @@ public class ChestshopProvider {
         this.cachedChestShops.get(id).setShopCount(u);
 
         CompletableFuture.runAsync(() -> {
-            this.chestShopCollection.updateOne(new Document("_id", id), new Document("$set", new Document("count", u)));
+            this.getCollection("chestshop_data").updateOne(new Document("_id", id), new Document("$set", new Document("count", u)));
         });
     }
 
@@ -102,7 +94,7 @@ public class ChestshopProvider {
         this.cachedChestShops.get(id).setPrice(u);
 
         CompletableFuture.runAsync(() -> {
-            this.chestShopCollection.updateOne(new Document("_id", id), new Document("$set", new Document("price", u)));
+            this.getCollection("chestshop_data").updateOne(new Document("_id", id), new Document("$set", new Document("price", u)));
         });
     }
 
@@ -110,7 +102,7 @@ public class ChestshopProvider {
         this.cachedChestShops.get(id).setItem(u);
 
         CompletableFuture.runAsync(() -> {
-            this.chestShopCollection.updateOne(new Document("_id", id), new Document("$set", new Document("item", u)));
+            this.getCollection("chestshop_data").updateOne(new Document("_id", id), new Document("$set", new Document("item", u)));
         });
     }
 
@@ -118,7 +110,7 @@ public class ChestshopProvider {
         this.cachedChestShops.remove(id);
 
         CompletableFuture.runAsync(() -> {
-            this.chestShopCollection.findOneAndDelete(new Document("_id", id));
+            this.getCollection("chestshop_data").findOneAndDelete(new Document("_id", id));
         });
     }
 
@@ -127,7 +119,7 @@ public class ChestshopProvider {
             this.cachedChestShopLicenses.put(owner, new ChestShopLicense(owner, license, 0));
 
             CompletableFuture.runAsync(() -> {
-                this.licenseCollection.insertOne(new Document("_id", owner).append("license", license).append("shops", 0));
+                this.getCollection("chestshop_licenses").insertOne(new Document("_id", owner).append("license", license).append("shops", 0));
             });
             return;
         }
@@ -135,7 +127,7 @@ public class ChestshopProvider {
         this.cachedChestShopLicenses.get(owner).setLicense(license);
 
         CompletableFuture.runAsync(() -> {
-            this.licenseCollection.updateOne(new Document("_id", owner), new Document("$set", new Document("license", license)));
+            this.getCollection("chestshop_licenses").updateOne(new Document("_id", owner), new Document("$set", new Document("license", license)));
         });
     }
 
@@ -144,7 +136,7 @@ public class ChestshopProvider {
             this.cachedChestShopLicenses.put(owner, new ChestShopLicense(owner, "STANDARD", i));
 
             CompletableFuture.runAsync(() -> {
-                this.licenseCollection.insertOne(new Document("_id", owner).append("license", "STANDARD").append("shops", i));
+                this.getCollection("chestshop_licenses").insertOne(new Document("_id", owner).append("license", "STANDARD").append("shops", i));
             });
             return;
         }
@@ -152,7 +144,7 @@ public class ChestshopProvider {
         this.cachedChestShopLicenses.get(owner).setAdditionalShops(i);
 
         CompletableFuture.runAsync(() -> {
-            this.licenseCollection.updateOne(new Document("_id", owner), new Document("$set", new Document("shops", i)));
+            this.getCollection("chestshop_licenses").updateOne(new Document("_id", owner), new Document("$set", new Document("shops", i)));
         });
     }
 
@@ -161,7 +153,7 @@ public class ChestshopProvider {
             this.cachedChestShopLicenses.put(owner, new ChestShopLicense(owner, "STANDARD", i));
 
             CompletableFuture.runAsync(() -> {
-                this.licenseCollection.insertOne(new Document("_id", owner).append("license", "STANDARD").append("shops", i));
+                this.getCollection("chestshop_licenses").insertOne(new Document("_id", owner).append("license", "STANDARD").append("shops", i));
             });
             return;
         }
@@ -169,7 +161,7 @@ public class ChestshopProvider {
         this.cachedChestShopLicenses.get(owner).addShops(i);
 
         CompletableFuture.runAsync(() -> {
-            this.licenseCollection.updateOne(new Document("_id", owner), new Document("$set", new Document("shops", this.cachedChestShopLicenses.get(owner).getAdditionalShops())));
+            this.getCollection("chestshop_licenses").updateOne(new Document("_id", owner), new Document("$set", new Document("shops", this.cachedChestShopLicenses.get(owner).getAdditionalShops())));
         });
     }
 

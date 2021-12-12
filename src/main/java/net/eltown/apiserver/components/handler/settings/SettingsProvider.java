@@ -6,6 +6,7 @@ import com.mongodb.client.MongoCollection;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import net.eltown.apiserver.Server;
+import net.eltown.apiserver.components.Provider;
 import net.eltown.apiserver.components.config.Config;
 import net.eltown.apiserver.components.handler.settings.data.AccountSettings;
 import net.eltown.apiserver.components.tinyrabbit.TinyRabbit;
@@ -14,25 +15,16 @@ import org.bson.Document;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
-@RequiredArgsConstructor
-public class SettingsProvider {
-
-    private final MongoClient client;
-    private final MongoCollection<Document> settingsCollection;
-    public final TinyRabbit tinyRabbit;
+public class SettingsProvider extends Provider {
 
     public final HashMap<String, AccountSettings> cachedSettings = new HashMap<>();
 
     @SneakyThrows
     public SettingsProvider(final Server server) {
-        final Config config = server.getConfig();
-        this.client = new MongoClient(new MongoClientURI(config.getString("MongoDB.Uri")));
-        this.settingsCollection = this.client.getDatabase(config.getString("MongoDB.GroupDB")).getCollection("player_settings");
-
-        this.tinyRabbit = new TinyRabbit("localhost", "API/Settings[Main]");
+        super(server, "player_settings");
 
         server.log("Nutzer-Einstellungen werden in den Cache geladen...");
-        for (final Document document : this.settingsCollection.find()) {
+        for (final Document document : this.getCollection("player_settings").find()) {
             final List<String> d = document.getList("settings", String.class);
             final Map<String, String> map = new HashMap<>();
             d.forEach(e -> {
@@ -51,7 +43,7 @@ public class SettingsProvider {
         this.cachedSettings.put(player, new AccountSettings(player, new HashMap<>()));
 
         CompletableFuture.runAsync(() -> {
-            this.settingsCollection.insertOne(new Document("_id", player).append("settings", new ArrayList<String>()));
+            this.getCollection("player_settings").insertOne(new Document("_id", player).append("settings", new ArrayList<String>()));
         });
     }
 
@@ -69,7 +61,7 @@ public class SettingsProvider {
         this.cachedSettings.get(player).setSettings(map);
 
         CompletableFuture.runAsync(() -> {
-            final Document document = this.settingsCollection.find(new Document("_id", player)).first();
+            final Document document = this.getCollection("player_settings").find(new Document("_id", player)).first();
             assert document != null;
             final List<String> d = document.getList("settings", String.class);
             final List<String> set = new ArrayList<>();
@@ -81,7 +73,7 @@ public class SettingsProvider {
             });
             set.add(key + ":" + value);
 
-            this.settingsCollection.updateOne(new Document("_id", player), new Document("$set", new Document("settings", set)));
+            this.getCollection("player_settings").updateOne(new Document("_id", player), new Document("$set", new Document("settings", set)));
         });
     }
 
@@ -96,11 +88,11 @@ public class SettingsProvider {
         this.cachedSettings.get(player).setSettings(map);
 
         CompletableFuture.runAsync(() -> {
-            final Document document = this.settingsCollection.find(new Document("_id", player)).first();
+            final Document document = this.getCollection("player_settings").find(new Document("_id", player)).first();
             assert document != null;
             final List<String> set = new ArrayList<>(rawData);
 
-            this.settingsCollection.updateOne(new Document("_id", player), new Document("$set", new Document("settings", set)));
+            this.getCollection("player_settings").updateOne(new Document("_id", player), new Document("$set", new Document("settings", set)));
         });
     }
 
@@ -110,7 +102,7 @@ public class SettingsProvider {
         this.cachedSettings.get(player).setSettings(map);
 
         CompletableFuture.runAsync(() -> {
-            final Document document = this.settingsCollection.find(new Document("_id", player)).first();
+            final Document document = this.getCollection("player_settings").find(new Document("_id", player)).first();
             assert document != null;
             final List<String> d = document.getList("settings", String.class);
             final List<String> set = new ArrayList<>();
@@ -121,7 +113,7 @@ public class SettingsProvider {
                 }
             });
 
-            this.settingsCollection.updateOne(new Document("_id", player), new Document("$set", new Document("settings", set)));
+            this.getCollection("player_settings").updateOne(new Document("_id", player), new Document("$set", new Document("settings", set)));
         });
     }
 }

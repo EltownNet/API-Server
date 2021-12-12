@@ -5,6 +5,7 @@ import com.mongodb.MongoClientURI;
 import com.mongodb.client.MongoCollection;
 import lombok.Getter;
 import net.eltown.apiserver.Server;
+import net.eltown.apiserver.components.Provider;
 import net.eltown.apiserver.components.config.Config;
 import net.eltown.apiserver.components.handler.shops.data.ItemPrice;
 import org.bson.Document;
@@ -14,11 +15,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class ShopProvider {
+public class ShopProvider extends Provider {
 
-    private final Server server;
-    private final MongoClient client;
-    private final MongoCollection<Document> collection;
     @Getter
     private final Map<String, ItemPrice> prices = new HashMap<>();
     @Getter
@@ -28,13 +26,10 @@ public class ShopProvider {
     private final int amountFactor = 64;
 
     public ShopProvider(final Server server) {
-        this.server = server;
+        super(server, "shop_prices");
         server.log("Shop Preise werden in den Cache geladen...");
-        final Config config = server.getConfig();
-        this.client = new MongoClient(new MongoClientURI(config.getString("MongoDB.Uri")));
-        this.collection = this.client.getDatabase(config.getString("MongoDB.ShopsDB")).getCollection("shop_prices");
 
-        for (final Document e : this.collection.find()) {
+        for (final Document e : this.getCollection("shop_prices").find()) {
             final String[] splitId = e.getString("_id").split(":");
 
             final int[] id = new int[]{Integer.parseInt(splitId[0]), Integer.parseInt(splitId[1])};
@@ -105,7 +100,7 @@ public class ShopProvider {
 
     public void updatePrices() {
         final AtomicInteger count = new AtomicInteger();
-        server.log(4, "Aktualisiere Shop Preise...");
+        this.getServer().log(4, "Aktualisiere Shop Preise...");
 
         this.getPrices().values().forEach((e) -> {
             final int toDevide = e.getBought() - e.getSold();
@@ -133,14 +128,14 @@ public class ShopProvider {
             }
         });
 
-        server.log(4, count.get() + " Shop Preise wurden aktualisiert.");
+        this.getServer().log(4, count.get() + " Shop Preise wurden aktualisiert.");
     }
 
     public void updatePrice(final ItemPrice price) {
         this.prices.put(this.stringId(price.getId()), price);
         CompletableFuture.runAsync(() -> {
             try {
-                this.collection.updateOne(new Document("_id", this.stringId(price.getId())),
+                this.getCollection("shop_prices").updateOne(new Document("_id", this.stringId(price.getId())),
                         new Document("$set", new Document("price", price.getPrice())
                                 .append("bought", price.getBought())
                                 .append("sold", price.getSold())
@@ -158,7 +153,7 @@ public class ShopProvider {
         final ItemPrice itemPrice = new ItemPrice(id, 5, 0.25, 0.01, 0, 0);
         this.getPrices().put(stringId(id), itemPrice);
         CompletableFuture.runAsync(() -> {
-            this.collection.insertOne(
+            this.getCollection("shop_prices").insertOne(
                     new Document("_id", this.stringId(id))
                             .append("price", 5d)
                             .append("bought", 0)

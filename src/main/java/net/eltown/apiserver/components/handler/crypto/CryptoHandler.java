@@ -2,6 +2,7 @@ package net.eltown.apiserver.components.handler.crypto;
 
 import lombok.SneakyThrows;
 import net.eltown.apiserver.Server;
+import net.eltown.apiserver.components.Handler;
 import net.eltown.apiserver.components.handler.crypto.data.Transaction;
 import net.eltown.apiserver.components.handler.crypto.data.TransferPrices;
 import net.eltown.apiserver.components.handler.crypto.data.Wallet;
@@ -10,54 +11,46 @@ import net.eltown.apiserver.components.tinyrabbit.TinyRabbitListener;
 
 import java.util.Random;
 
-public class CryptoHandler {
-
-    private final Server server;
-    private final CryptoProvider provider;
-    private final TinyRabbitListener listener;
+public class CryptoHandler extends Handler<CryptoProvider> {
 
     @SneakyThrows
     public CryptoHandler(final Server server) {
-        this.server = server;
-        this.provider = new CryptoProvider(server);
-        this.listener = new TinyRabbitListener("localhost");
-        this.listener.throwExceptions(true);
+        super(server, "CryptoHandler", new CryptoProvider(server));
         this.startCallbacking();
     }
 
     public void startCallbacking() {
-        this.server.getExecutor().execute(() -> {
-            this.listener.callback((request) -> {
+        this.getServer().getExecutor().execute(() -> {
+            this.getTinyRabbitListener().callback((request) -> {
                 try {
 
                     final String[] data = request.getData();
 
                     switch (CryptoCalls.valueOf(request.getKey())) {
-                        case REQUEST_WALLET:
-                            final Wallet wallet = this.provider.getWallet(data[1]);
+                        case REQUEST_WALLET -> {
+                            final Wallet wallet = this.getProvider().getWallet(data[1]);
                             request.answer(CryptoCalls.REQUEST_WALLET.name(), wallet.getOwner(), String.valueOf(wallet.getCtc()), String.valueOf(wallet.getElt()), String.valueOf(wallet.getNot()));
-                            break;
-                        case REQUEST_UPDATE_WALLET:
-                            this.provider.updateWallet(new Wallet(
+                        }
+                        case REQUEST_UPDATE_WALLET -> {
+                            this.getProvider().updateWallet(new Wallet(
                                     data[1],
                                     Double.parseDouble(data[2]),
                                     Double.parseDouble(data[3]),
                                     Double.parseDouble(data[4])
                             ));
                             request.answer(CryptoCalls.REQUEST_UPDATE_WALLET.name(), "null");
-                            break;
-                        case REQUEST_WORTH:
-                            final Worth w = this.provider.getWorth();
+                        }
+                        case REQUEST_WORTH -> {
+                            final Worth w = this.getProvider().getWorth();
                             request.answer(CryptoCalls.REQUEST_WORTH.name(), "" + w.getCtc(), "" + w.getElt(), "" + w.getNot());
-                            break;
-                        case REQUEST_TRANSFER_PRICES:
-                            final TransferPrices t = this.provider.getTransferPrices();
+                        }
+                        case REQUEST_TRANSFER_PRICES -> {
+                            final TransferPrices t = this.getProvider().getTransferPrices();
                             request.answer(CryptoCalls.REQUEST_TRANSFER_PRICES.name(), "" + t.getSlow(), "" + t.getNormal(), "" + t.getFast());
-                            break;
-                        case REQUEST_TRANSACTIONS:
+                        }
+                        case REQUEST_TRANSACTIONS -> {
                             final StringBuilder sb = new StringBuilder();
-
-                            this.provider.getTransactions(data[1]).forEach((e) -> {
+                            this.getProvider().getTransactions(data[1]).forEach((e) -> {
                                 sb.append(e.getId())
                                         .append(">>")
                                         .append(e.getAmount())
@@ -77,9 +70,8 @@ public class CryptoHandler {
                                         .append(e.getMinutes())
                                         .append("&");
                             });
-
                             request.answer(CryptoCalls.REQUEST_TRANSACTIONS.name(), sb.length() > 3 ? sb.substring(0, sb.length() - 1) : "null");
-                            break;
+                        }
                     }
                 } catch (Exception ex) {
                     ex.printStackTrace();
@@ -87,31 +79,28 @@ public class CryptoHandler {
             }, "API/Crypto[Callback]", "api.crypto.callback");
         });
 
-        this.server.getExecutor().execute(() -> {
-                this.listener.receive((delivery) -> {
+        this.getServer().getExecutor().execute(() -> {
+                this.getTinyRabbitListener().receive((delivery) -> {
                         final String[] data = delivery.getData();
 
-                        switch (CryptoCalls.valueOf(delivery.getKey())) {
-                            case UPDATE_WALLET:
-                                this.provider.updateWallet(new Wallet(
-                                        data[1],
-                                        Double.parseDouble(data[2]),
-                                        Double.parseDouble(data[3]),
-                                        Double.parseDouble(data[4])
-                                ));
-                                break;
-                            case UPDATE_TRANSFER_CRYPTO:
-                                final String id = this.createID(32);
-                                final String asset = data[1];
-                                final double amount = Double.parseDouble(data[2]);
-                                final double worth = Double.parseDouble(data[3]);
-                                final String from = data[4];
-                                final String to = data[5];
-                                final int time = Integer.parseInt(data[6]);
-
-                                this.provider.addTransaction(new Transaction(id, amount, worth, asset, from, to, time, time, false));
-                                break;
+                    switch (CryptoCalls.valueOf(delivery.getKey())) {
+                        case UPDATE_WALLET -> this.getProvider().updateWallet(new Wallet(
+                                data[1],
+                                Double.parseDouble(data[2]),
+                                Double.parseDouble(data[3]),
+                                Double.parseDouble(data[4])
+                        ));
+                        case UPDATE_TRANSFER_CRYPTO -> {
+                            final String id = this.createID(32);
+                            final String asset = data[1];
+                            final double amount = Double.parseDouble(data[2]);
+                            final double worth = Double.parseDouble(data[3]);
+                            final String from = data[4];
+                            final String to = data[5];
+                            final int time = Integer.parseInt(data[6]);
+                            this.getProvider().addTransaction(new Transaction(id, amount, worth, asset, from, to, time, time, false));
                         }
+                    }
                 }, "API/Crypto[Receive]", "api.crypto.receive");
         });
 

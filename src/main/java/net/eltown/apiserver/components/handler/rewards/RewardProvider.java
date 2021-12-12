@@ -5,6 +5,7 @@ import com.mongodb.MongoClientURI;
 import com.mongodb.client.MongoCollection;
 import lombok.SneakyThrows;
 import net.eltown.apiserver.Server;
+import net.eltown.apiserver.components.Provider;
 import net.eltown.apiserver.components.config.Config;
 import net.eltown.apiserver.components.handler.rewards.data.DailyReward;
 import net.eltown.apiserver.components.handler.rewards.data.RewardPlayer;
@@ -17,26 +18,17 @@ import java.util.List;
 import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 
-public class RewardProvider {
-
-    private final MongoClient client;
-    private final MongoCollection<Document> rewardCollection, playerDataCollection;
-    public final TinyRabbit tinyRabbit;
+public class RewardProvider extends Provider {
 
     public final LinkedHashMap<String, DailyReward> dailyRewards = new LinkedHashMap<>();
     public final LinkedHashMap<String, RewardPlayer> rewardPlayers = new LinkedHashMap<>();
 
     @SneakyThrows
     public RewardProvider(final Server server) {
-        final Config config = server.getConfig();
-        this.client = new MongoClient(new MongoClientURI(config.getString("MongoDB.Uri")));
-        this.rewardCollection = this.client.getDatabase(config.getString("MongoDB.GroupDB")).getCollection("reward_rewards");
-        this.playerDataCollection = this.client.getDatabase(config.getString("MongoDB.GroupDB")).getCollection("reward_playerdata");
-
-        this.tinyRabbit = new TinyRabbit("localhost", "API/Rewards[Main]");
+        super(server, "reward_rewards", "rewards_playerdata");
 
         server.log("DailyRewards werden in den Cache geladen...");
-        for (final Document document : this.rewardCollection.find()) {
+        for (final Document document : this.getCollection("reward_rewards").find()) {
             this.dailyRewards.put(document.getString("_id"), new DailyReward(
                     document.getString("description"),
                     document.getString("_id"),
@@ -48,7 +40,7 @@ public class RewardProvider {
         server.log(this.dailyRewards.size() + " DailyRewards wurden in den Cache geladen...");
 
         server.log("RewardDaten werden in den Cache geladen...");
-        for (final Document document : this.playerDataCollection.find()) {
+        for (final Document document : this.getCollection("rewards_playerdata").find()) {
             this.rewardPlayers.put(document.getString("_id"), new RewardPlayer(
                     document.getString("_id"),
                     document.getInteger("day"),
@@ -64,7 +56,7 @@ public class RewardProvider {
         this.dailyRewards.put(id, new DailyReward(description, id, day, chance, data));
 
         CompletableFuture.runAsync(() -> {
-            this.rewardCollection.insertOne(new Document("_id", id).append("description", description).append("day", day).append("chance", chance).append("data", data));
+            this.getCollection("reward_rewards").insertOne(new Document("_id", id).append("description", description).append("day", day).append("chance", chance).append("data", data));
         });
     }
 
@@ -72,7 +64,7 @@ public class RewardProvider {
         this.dailyRewards.remove(id);
 
         CompletableFuture.runAsync(() -> {
-            this.rewardCollection.findOneAndDelete(new Document("_id", id));
+            this.getCollection("reward_rewards").findOneAndDelete(new Document("_id", id));
         });
     }
 
@@ -84,7 +76,7 @@ public class RewardProvider {
         this.rewardPlayers.put(player, new RewardPlayer(player, 0, 0, 0));
 
         CompletableFuture.runAsync(() -> {
-            this.playerDataCollection.insertOne(new Document("_id", player).append("day", 0).append("lastReward", (long) 0).append("onlineTime", (long) 0));
+            this.getCollection("rewards_playerdata").insertOne(new Document("_id", player).append("day", 0).append("lastReward", (long) 0).append("onlineTime", (long) 0));
         });
     }
 
@@ -101,7 +93,7 @@ public class RewardProvider {
         this.dailyRewards.replace(id, this.dailyRewards.get(id), dailyReward);
 
         CompletableFuture.runAsync(() -> {
-            this.rewardCollection.updateOne(new Document("_id", id), new Document("$set", new Document("description", dailyReward.getDescription()).append("chance", dailyReward.getChance()).append("data", dailyReward.getData())));
+            this.getCollection("reward_rewards").updateOne(new Document("_id", id), new Document("$set", new Document("description", dailyReward.getDescription()).append("chance", dailyReward.getChance()).append("data", dailyReward.getData())));
         });
     }
 
@@ -112,7 +104,7 @@ public class RewardProvider {
         rewardPlayer.setOnlineTime(0);
 
         CompletableFuture.runAsync(() -> {
-            this.playerDataCollection.updateOne(new Document("_id", player), new Document("$set", new Document("day", rewardPlayer.getDay()).append("lastReward", rewardPlayer.getLastReward()).append("onlineTime", rewardPlayer.getOnlineTime())));
+            this.getCollection("rewards_playerdata").updateOne(new Document("_id", player), new Document("$set", new Document("day", rewardPlayer.getDay()).append("lastReward", rewardPlayer.getLastReward()).append("onlineTime", rewardPlayer.getOnlineTime())));
         });
     }
 
@@ -122,7 +114,7 @@ public class RewardProvider {
         this.rewardPlayers.get(player).setOnlineTime(0);
 
         CompletableFuture.runAsync(() -> {
-            this.playerDataCollection.updateOne(new Document("_id", player), new Document("$set", new Document("day", 0).append("lastReward", 0L).append("onlineTime", 0L)));
+            this.getCollection("rewards_playerdata").updateOne(new Document("_id", player), new Document("$set", new Document("day", 0).append("lastReward", 0L).append("onlineTime", 0L)));
         });
     }
 

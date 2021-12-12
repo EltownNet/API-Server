@@ -6,6 +6,7 @@ import com.mongodb.client.MongoCollection;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import net.eltown.apiserver.Server;
+import net.eltown.apiserver.components.Provider;
 import net.eltown.apiserver.components.config.Config;
 import net.eltown.apiserver.components.handler.groupmanager.data.Group;
 import net.eltown.apiserver.components.handler.groupmanager.data.GroupedPlayer;
@@ -19,26 +20,18 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 @Getter
-public class GroupProvider {
-
-    private final MongoClient client;
-    private final MongoCollection<Document> groupCollection, playerCollection;
-    private final TinyRabbit tinyRabbit;
+public class GroupProvider extends Provider {
 
     public final HashMap<String, Group> groups = new HashMap<>();
     public final HashMap<String, GroupedPlayer> groupedPlayers = new HashMap<>();
 
     @SneakyThrows
     public GroupProvider(final Server server) {
-        final Config config = server.getConfig();
-        this.client = new MongoClient(new MongoClientURI(config.getString("MongoDB.Uri")));
-        this.groupCollection = this.client.getDatabase(config.getString("MongoDB.GroupDB")).getCollection("group_groups");
-        this.playerCollection = this.client.getDatabase(config.getString("MongoDB.GroupDB")).getCollection("group_players");
-
-        this.tinyRabbit = new TinyRabbit("localhost", "API/Groupmanager[Main]");
+        super(server, "group_groups", "group_players");
+        this.createClient("API/Groupmanager[Main]");
 
         server.log("Gruppen werden in den Cache geladen...");
-        for (final Document document : this.groupCollection.find()) {
+        for (final Document document : this.getCollection("group_groups").find()) {
             this.groups.put(document.getString("group"), new Group(
                     document.getString("group"),
                     document.getString("prefix"),
@@ -49,7 +42,7 @@ public class GroupProvider {
         server.log(this.groups.size() + " Gruppen wurden in den Cache geladen...");
 
         server.log("Spieler werden in den Cache geladen...");
-        for (final Document document : this.playerCollection.find()) {
+        for (final Document document : this.getCollection("group_players").find()) {
             this.groupedPlayers.put(document.getString("_id"), new GroupedPlayer(
                     document.getString("_id"),
                     document.getString("group"),
@@ -75,7 +68,7 @@ public class GroupProvider {
     public void createPlayer(final String player) {
         this.groupedPlayers.put(player, new GroupedPlayer(player, "SPIELER", -1, Collections.singletonList("none")));
         CompletableFuture.runAsync(() -> {
-            this.playerCollection.insertOne(new Document("_id", player).append("group", "SPIELER").append("duration", (long) -1).append("permissions", Collections.singletonList("none")));
+            this.getCollection("group_players").insertOne(new Document("_id", player).append("group", "SPIELER").append("duration", (long) -1).append("permissions", Collections.singletonList("none")));
         });
     }
 
@@ -85,15 +78,15 @@ public class GroupProvider {
         System.out.println(group);
         System.out.println(this.groupedPlayers.get(player).getGroup());
         CompletableFuture.runAsync(() -> {
-            this.playerCollection.updateMany(new Document("_id", player), new Document("$set", new Document("group", group).append("duration", duration)));
+            this.getCollection("group_players").updateMany(new Document("_id", player), new Document("$set", new Document("group", group).append("duration", duration)));
         });
     }
 
     public void createGroup(final String group, final String prefix) {
         this.groups.put(group, new Group(group, prefix, new ArrayList<String>(), new ArrayList<String>()));
-        this.getTinyRabbit().send("core.proxy.groupmanager.receive", GroupCalls.REQUEST_CHANGE_PREFIX.name(), group, prefix);
+        this.getTinyRabbitClient().send("core.proxy.groupmanager.receive", GroupCalls.REQUEST_CHANGE_PREFIX.name(), group, prefix);
         CompletableFuture.runAsync(() -> {
-            this.groupCollection.insertOne(new Document("group", group.toUpperCase()).append("prefix", prefix).append("permissions", new ArrayList<String>()).append("inheritances", new ArrayList<String>()));
+            this.getCollection("group_groups").insertOne(new Document("group", group.toUpperCase()).append("prefix", prefix).append("permissions", new ArrayList<String>()).append("inheritances", new ArrayList<String>()));
         });
     }
 
@@ -105,7 +98,7 @@ public class GroupProvider {
             }
         });
         CompletableFuture.runAsync(() -> {
-            this.groupCollection.findOneAndDelete(new Document("group", group));
+            this.getCollection("group_groups").findOneAndDelete(new Document("group", group));
         });
     }
 
@@ -113,11 +106,11 @@ public class GroupProvider {
         final Group sGroup = this.groups.get(group);
         sGroup.getPermissions().add(permission);
         CompletableFuture.runAsync(() -> {
-            final Document document = this.groupCollection.find(new Document("group", group)).first();
+            final Document document = this.getCollection("group_groups").find(new Document("group", group)).first();
             assert document != null;
             final List<String> list = document.getList("permissions", String.class);
             list.add(permission);
-            this.groupCollection.updateOne(new Document("group", group), new Document("$set", new Document("permissions", list)));
+            this.getCollection("group_groups").updateOne(new Document("group", group), new Document("$set", new Document("permissions", list)));
         });
     }
 
@@ -125,11 +118,11 @@ public class GroupProvider {
         final Group sGroup = this.groups.get(group);
         sGroup.getPermissions().remove(permission);
         CompletableFuture.runAsync(() -> {
-            final Document document = this.groupCollection.find(new Document("group", group)).first();
+            final Document document = this.getCollection("group_groups").find(new Document("group", group)).first();
             assert document != null;
             final List<String> list = document.getList("permissions", String.class);
             list.remove(permission);
-            this.groupCollection.updateOne(new Document("group", group), new Document("$set", new Document("permissions", list)));
+            this.getCollection("group_groups").updateOne(new Document("group", group), new Document("$set", new Document("permissions", list)));
         });
     }
 
@@ -137,11 +130,11 @@ public class GroupProvider {
         final GroupedPlayer sGroup = this.groupedPlayers.get(player);
         sGroup.getPermissions().add(permission);
         CompletableFuture.runAsync(() -> {
-            final Document document = this.playerCollection.find(new Document("_id", player)).first();
+            final Document document = this.getCollection("group_players").find(new Document("_id", player)).first();
             assert document != null;
             final List<String> list = document.getList("permissions", String.class);
             list.add(permission);
-            this.playerCollection.updateOne(new Document("_id", player), new Document("$set", new Document("permissions", list)));
+            this.getCollection("group_players").updateOne(new Document("_id", player), new Document("$set", new Document("permissions", list)));
         });
     }
 
@@ -149,11 +142,11 @@ public class GroupProvider {
         final GroupedPlayer sGroup = this.groupedPlayers.get(player);
         sGroup.getPermissions().remove(permission);
         CompletableFuture.runAsync(() -> {
-            final Document document = this.playerCollection.find(new Document("_id", player)).first();
+            final Document document = this.getCollection("group_players").find(new Document("_id", player)).first();
             assert document != null;
             final List<String> list = document.getList("permissions", String.class);
             list.remove(permission);
-            this.playerCollection.updateOne(new Document("_id", player), new Document("$set", new Document("permissions", list)));
+            this.getCollection("group_players").updateOne(new Document("_id", player), new Document("$set", new Document("permissions", list)));
         });
     }
 
@@ -161,11 +154,11 @@ public class GroupProvider {
         final Group sGroup = this.groups.get(group);
         sGroup.getInheritances().add(inheritance);
         CompletableFuture.runAsync(() -> {
-            final Document document = this.groupCollection.find(new Document("group", group)).first();
+            final Document document = this.getCollection("group_groups").find(new Document("group", group)).first();
             assert document != null;
             final List<String> list = document.getList("inheritances", String.class);
             list.add(inheritance);
-            this.groupCollection.updateOne(new Document("group", group), new Document("$set", new Document("inheritances", list)));
+            this.getCollection("group_groups").updateOne(new Document("group", group), new Document("$set", new Document("inheritances", list)));
         });
     }
 
@@ -173,11 +166,11 @@ public class GroupProvider {
         final Group sGroup = this.groups.get(group);
         sGroup.getInheritances().remove(inheritance);
         CompletableFuture.runAsync(() -> {
-            final Document document = this.groupCollection.find(new Document("group", group)).first();
+            final Document document = this.getCollection("group_groups").find(new Document("group", group)).first();
             assert document != null;
             final List<String> list = document.getList("inheritances", String.class);
             list.remove(inheritance);
-            this.groupCollection.updateOne(new Document("group", group), new Document("$set", new Document("inheritances", list)));
+            this.getCollection("group_groups").updateOne(new Document("group", group), new Document("$set", new Document("inheritances", list)));
         });
     }
 
@@ -185,12 +178,12 @@ public class GroupProvider {
         final Group sGroup = this.groups.get(group);
         sGroup.setPrefix(prefix);
         CompletableFuture.runAsync(() -> {
-            final Document document = this.groupCollection.find(new Document("group", group)).first();
+            final Document document = this.getCollection("group_groups").find(new Document("group", group)).first();
             assert document != null;
-            this.groupCollection.updateOne(new Document("group", group), new Document("$set", new Document("prefix", prefix)));
+            this.getCollection("group_groups").updateOne(new Document("group", group), new Document("$set", new Document("prefix", prefix)));
         });
 
-        this.getTinyRabbit().send("core.proxy.groupmanager.receive", GroupCalls.REQUEST_CHANGE_PREFIX.name(), group, prefix);
+        this.getTinyRabbitClient().send("core.proxy.groupmanager.receive", GroupCalls.REQUEST_CHANGE_PREFIX.name(), group, prefix);
     }
 
 }

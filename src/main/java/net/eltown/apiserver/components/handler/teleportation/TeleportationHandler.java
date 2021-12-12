@@ -2,6 +2,7 @@ package net.eltown.apiserver.components.handler.teleportation;
 
 import lombok.SneakyThrows;
 import net.eltown.apiserver.Server;
+import net.eltown.apiserver.components.Handler;
 import net.eltown.apiserver.components.handler.teleportation.data.Home;
 import net.eltown.apiserver.components.handler.teleportation.data.Warp;
 import net.eltown.apiserver.components.tinyrabbit.TinyRabbitListener;
@@ -10,77 +11,51 @@ import java.util.Collection;
 import java.util.LinkedList;
 import java.util.Set;
 
-public class TeleportationHandler {
+public class TeleportationHandler extends Handler<TeleportationProvider> {
 
-    private final Server server;
-    private final TeleportationProvider provider;
-    private final TinyRabbitListener tinyRabbitListener;
 
     @SneakyThrows
     public TeleportationHandler(final Server server) {
-        this.server = server;
-        this.tinyRabbitListener = new TinyRabbitListener("localhost");
-        this.tinyRabbitListener.throwExceptions(true);
-        this.provider = new TeleportationProvider(server);
+        super(server, "TeleportationHandler", new TeleportationProvider(server));
         this.startCallbacking();
     }
 
     public void startCallbacking() {
-        this.server.getExecutor().execute(() -> {
-            this.tinyRabbitListener.receive(delivery -> {
+        this.getServer().getExecutor().execute(() -> {
+            this.getTinyRabbitListener().receive(delivery -> {
                 switch (TeleportationCalls.valueOf(delivery.getKey().toUpperCase())) {
-                    case REQUEST_DELETE_HOME:
-                        this.provider.deleteHome(delivery.getData()[1], delivery.getData()[2]);
-                        break;
-                    case REQUEST_RENAME_HOME:
-                        this.provider.updateHomeName(delivery.getData()[1], delivery.getData()[2], delivery.getData()[3]);
-                        break;
-                    case REQUEST_UPDATE_POSITION:
-                        this.provider.updateHomePosition(delivery.getData()[1], delivery.getData()[2], delivery.getData()[3], delivery.getData()[4], Double.parseDouble(delivery.getData()[5]),
-                                Double.parseDouble(delivery.getData()[6]), Double.parseDouble(delivery.getData()[7]), Double.parseDouble(delivery.getData()[8]), Double.parseDouble(delivery.getData()[9]));
-                        break;
-                    case REQUEST_DELETE_ALL_SERVER_HOMES:
-                        this.provider.deleteServerHomes(delivery.getData()[1]);
-                        break;
-                    case REQUEST_DELETE_WARP:
-                        this.provider.deleteWarp(delivery.getData()[1]);
-                        break;
-                    case REQUEST_RENAME_WARP:
-                        this.provider.updateWarpName(delivery.getData()[1], delivery.getData()[2]);
-                        break;
-                    case REQUEST_UPDATE_WARP_IMAGE:
-                        this.provider.updateWarpImage(delivery.getData()[1], delivery.getData()[2]);
-                        break;
-                    case REQUEST_UPDATE_WARP_POSITION:
-                        this.provider.updateWarpPosition(delivery.getData()[1], delivery.getData()[2], delivery.getData()[3], Double.parseDouble(delivery.getData()[4]),
-                                Double.parseDouble(delivery.getData()[5]), Double.parseDouble(delivery.getData()[6]), Double.parseDouble(delivery.getData()[7]), Double.parseDouble(delivery.getData()[8]));
-                        break;
-                    case REQUEST_TELEPORT:
+                    case REQUEST_DELETE_HOME -> this.getProvider().deleteHome(delivery.getData()[1], delivery.getData()[2]);
+                    case REQUEST_RENAME_HOME -> this.getProvider().updateHomeName(delivery.getData()[1], delivery.getData()[2], delivery.getData()[3]);
+                    case REQUEST_UPDATE_POSITION -> this.getProvider().updateHomePosition(delivery.getData()[1], delivery.getData()[2], delivery.getData()[3], delivery.getData()[4], Double.parseDouble(delivery.getData()[5]),
+                            Double.parseDouble(delivery.getData()[6]), Double.parseDouble(delivery.getData()[7]), Double.parseDouble(delivery.getData()[8]), Double.parseDouble(delivery.getData()[9]));
+                    case REQUEST_DELETE_ALL_SERVER_HOMES -> this.getProvider().deleteServerHomes(delivery.getData()[1]);
+                    case REQUEST_DELETE_WARP -> this.getProvider().deleteWarp(delivery.getData()[1]);
+                    case REQUEST_RENAME_WARP -> this.getProvider().updateWarpName(delivery.getData()[1], delivery.getData()[2]);
+                    case REQUEST_UPDATE_WARP_IMAGE -> this.getProvider().updateWarpImage(delivery.getData()[1], delivery.getData()[2]);
+                    case REQUEST_UPDATE_WARP_POSITION -> this.getProvider().updateWarpPosition(delivery.getData()[1], delivery.getData()[2], delivery.getData()[3], Double.parseDouble(delivery.getData()[4]),
+                            Double.parseDouble(delivery.getData()[5]), Double.parseDouble(delivery.getData()[6]), Double.parseDouble(delivery.getData()[7]), Double.parseDouble(delivery.getData()[8]));
+                    case REQUEST_TELEPORT -> {
                         final String[] d = delivery.getData();
-                        this.provider.cachedTeleportation.put(d[2], new Home(d[1], d[2], d[3], d[4], Double.parseDouble(d[5]), Double.parseDouble(d[6]), Double.parseDouble(d[7]), Double.parseDouble(d[8]), Double.parseDouble(d[9])));
-
+                        this.getProvider().cachedTeleportation.put(d[2], new Home(d[1], d[2], d[3], d[4], Double.parseDouble(d[5]), Double.parseDouble(d[6]), Double.parseDouble(d[7]), Double.parseDouble(d[8]), Double.parseDouble(d[9])));
                         if (!d[3].equals("null")) {
-                            this.provider.tinyRabbit.send("core.proxy.teleportation.receive", TeleportationCalls.REQUEST_TELEPORT.name(), d[2], d[3]);
+                            this.getProvider().getTinyRabbitClient().send("core.proxy.teleportation.receive", TeleportationCalls.REQUEST_TELEPORT.name(), d[2], d[3]);
                         } else {
-                            this.provider.tinyRabbit.send("core.proxy.teleportation.receive", TeleportationCalls.REQUEST_TELEPORT.name(), d[2], "to##" + d[4]);
+                            this.getProvider().getTinyRabbitClient().send("core.proxy.teleportation.receive", TeleportationCalls.REQUEST_TELEPORT.name(), d[2], "to##" + d[4]);
                         }
-                        break;
-                    case REQUEST_ACCEPT_TPA:
-                        this.provider.removeTpa(delivery.getData()[1], delivery.getData()[2]);
-
-                        this.provider.tinyRabbit.send("core.proxy.teleportation.receive", TeleportationCalls.REQUEST_TELEPORT_TPA.name(), delivery.getData()[1], delivery.getData()[2]);
-                        break;
-                    case REQUEST_DENY_TPA:
-                        this.provider.removeTpa(delivery.getData()[1], delivery.getData()[2]);
-                        break;
+                    }
+                    case REQUEST_ACCEPT_TPA -> {
+                        this.getProvider().removeTpa(delivery.getData()[1], delivery.getData()[2]);
+                        this.getProvider().getTinyRabbitClient().send("core.proxy.teleportation.receive", TeleportationCalls.REQUEST_TELEPORT_TPA.name(), delivery.getData()[1], delivery.getData()[2]);
+                    }
+                    case REQUEST_DENY_TPA -> this.getProvider().removeTpa(delivery.getData()[1], delivery.getData()[2]);
                 }
             }, "API/Teleportation[Receive]", "api.teleportation.receive");
         });
-        this.server.getExecutor().execute(() -> {
-            this.tinyRabbitListener.callback((request -> {
+        this.getServer().getExecutor().execute(() -> {
+            this.getTinyRabbitListener().callback((request -> {
                 switch (TeleportationCalls.valueOf(request.getKey().toUpperCase())) {
                     case REQUEST_ALL_HOMES:
-                        final Set<Home> homes = this.provider.getHomes(request.getData()[1]);
+                        final Set<Home> homes = this.getProvider().getHomes(request.getData()[1]);
                         if (homes.size() == 0) {
                             request.answer(TeleportationCalls.CALLBACK_NULL.name(), "null");
                         } else {
@@ -92,14 +67,14 @@ public class TeleportationHandler {
                         }
                         break;
                     case REQUEST_ADD_HOME:
-                        if (!this.provider.homeExists(request.getData()[1], request.getData()[2])) {
-                            this.provider.createHome(request.getData()[1], request.getData()[2], request.getData()[3], request.getData()[4], Double.parseDouble(request.getData()[5]),
+                        if (!this.getProvider().homeExists(request.getData()[1], request.getData()[2])) {
+                            this.getProvider().createHome(request.getData()[1], request.getData()[2], request.getData()[3], request.getData()[4], Double.parseDouble(request.getData()[5]),
                                     Double.parseDouble(request.getData()[6]), Double.parseDouble(request.getData()[7]), Double.parseDouble(request.getData()[8]), Double.parseDouble(request.getData()[9]));
                             request.answer(TeleportationCalls.CALLBACK_NULL.name(), "null");
                         } else request.answer(TeleportationCalls.CALLBACK_HOME_ALREADY_SET.name(), "null");
                         break;
                     case REQUEST_ALL_WARPS:
-                        final Collection<Warp> warps = this.provider.warps.values();
+                        final Collection<Warp> warps = this.getProvider().warps.values();
                         if (warps.size() == 0) {
                             request.answer(TeleportationCalls.CALLBACK_NULL.name(), "null");
                         } else {
@@ -111,27 +86,27 @@ public class TeleportationHandler {
                         }
                         break;
                     case REQUEST_ADD_WARP:
-                        if (!this.provider.warpExists(request.getData()[1])) {
-                            this.provider.createWarp(request.getData()[1], request.getData()[2], request.getData()[3], request.getData()[4], request.getData()[5], Double.parseDouble(request.getData()[6]),
+                        if (!this.getProvider().warpExists(request.getData()[1])) {
+                            this.getProvider().createWarp(request.getData()[1], request.getData()[2], request.getData()[3], request.getData()[4], request.getData()[5], Double.parseDouble(request.getData()[6]),
                                     Double.parseDouble(request.getData()[7]), Double.parseDouble(request.getData()[8]), Double.parseDouble(request.getData()[9]), Double.parseDouble(request.getData()[10]));
                             request.answer(TeleportationCalls.CALLBACK_NULL.name(), "null");
                         } else request.answer(TeleportationCalls.CALLBACK_WARP_ALREADY_SET.name(), "null");
                         break;
                     case REQUEST_CACHED_DATA:
-                        if (this.provider.cachedTeleportation.containsKey(request.getData()[1])) {
-                            final Home home = this.provider.cachedTeleportation.get(request.getData()[1]);
-                            this.provider.cachedTeleportation.remove(request.getData()[1]);
+                        if (this.getProvider().cachedTeleportation.containsKey(request.getData()[1])) {
+                            final Home home = this.getProvider().cachedTeleportation.get(request.getData()[1]);
+                            this.getProvider().cachedTeleportation.remove(request.getData()[1]);
                             request.answer(TeleportationCalls.CALLBACK_CACHED_DATA.name(), home.getName(), home.getWorld(), String.valueOf(home.getX()), String.valueOf(home.getY()), String.valueOf(home.getZ()),
                                     String.valueOf(home.getYaw()), String.valueOf(home.getPitch()));
                         } else request.answer(TeleportationCalls.CALLBACK_NULL.name(), "null");
                         break;
                     case REQUEST_SEND_TPA:
                         try {
-                            if (!this.provider.hasTpaSent(request.getData()[2], request.getData()[1])) {
-                                this.provider.createTpa(request.getData()[1], request.getData()[2]);
+                            if (!this.getProvider().hasTpaSent(request.getData()[2], request.getData()[1])) {
+                                this.getProvider().createTpa(request.getData()[1], request.getData()[2]);
                                 request.answer(TeleportationCalls.CALLBACK_NULL.name(), "null");
 
-                                this.provider.tinyRabbit.send("core.proxy.teleportation.receive", TeleportationCalls.REQUEST_TPA_NOTIFICATION.name(), request.getData()[1], request.getData()[2]);
+                                this.getProvider().getTinyRabbitClient().send("core.proxy.teleportation.receive", TeleportationCalls.REQUEST_TPA_NOTIFICATION.name(), request.getData()[1], request.getData()[2]);
                             } else request.answer(TeleportationCalls.CALLBACK_TPA_ALREADY_SENT.name(), "null");
                         } catch (final Exception e) {
                             e.printStackTrace();
@@ -139,7 +114,7 @@ public class TeleportationHandler {
                         break;
                     case REQUEST_TPAS:
                         try {
-                            final Collection<String> tpas = this.provider.getTpas(request.getData()[1]);
+                            final Collection<String> tpas = this.getProvider().getTpas(request.getData()[1]);
                             if (tpas.size() == 0) {
                                 request.answer(TeleportationCalls.CALLBACK_NULL.name(), "null");
                             } else {

@@ -3,32 +3,27 @@ package net.eltown.apiserver.components.handler.player;
 import com.rabbitmq.client.Connection;
 import lombok.SneakyThrows;
 import net.eltown.apiserver.Server;
+import net.eltown.apiserver.components.Handler;
 import net.eltown.apiserver.components.handler.player.data.SyncPlayer;
 import net.eltown.apiserver.components.tinyrabbit.TinyRabbitListener;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class PlayerHandler {
+public class PlayerHandler extends Handler<PlayerProvider> {
 
-    private final TinyRabbitListener listener;
-    private final Server server;
-    private final PlayerProvider provider;
 
     @SneakyThrows
-    public PlayerHandler(final Server server, final Connection connection) {
-        this.server = server;
-        this.provider = new PlayerProvider(server);
-        this.listener = new TinyRabbitListener("localhost");
-        this.listener.throwExceptions(true);
+    public PlayerHandler(final Server server) {
+        super(server, "PlayerHandler", new PlayerProvider(server));
 
         this.startCallbacking();
         this.startReceiving();
     }
 
     public void startReceiving() {
-        this.server.getExecutor().execute(() -> {
-            this.listener.receive((delivery -> {
+        this.getServer().getExecutor().execute(() -> {
+            this.getTinyRabbitListener().receive((delivery -> {
                 final String[] request = delivery.getData();
 
                 switch (PlayerCalls.valueOf(delivery.getKey())) {
@@ -49,12 +44,12 @@ public class PlayerHandler {
                                 request[14],
                                 true
                         );
-                        this.provider.set(request[1], set);
+                        this.getProvider().set(request[1], set);
                     }
                     case REQUEST_SETNOSYNC -> {
-                        SyncPlayer player = this.provider.get(request[1]);
+                        SyncPlayer player = this.getProvider().get(request[1]);
                         player.setCanSync(false);
-                        this.provider.set(request[1], player);
+                        this.getProvider().set(request[1], player);
                     }
                 }
 
@@ -63,11 +58,11 @@ public class PlayerHandler {
     }
 
     public void startCallbacking() {
-        this.server.getExecutor().execute(() -> {
-            this.listener.callback((request -> {
+        this.getServer().getExecutor().execute(() -> {
+            this.getTinyRabbitListener().callback((request -> {
                 switch (PlayerCalls.valueOf(request.getKey())) {
                     case REQUEST_SYNC:
-                        final SyncPlayer syncPlayer = this.provider.get(request.getData()[1]);
+                        final SyncPlayer syncPlayer = this.getProvider().get(request.getData()[1]);
                         if (syncPlayer.isCanSync()) {
                             request.answer(PlayerCalls.GOT_SYNC.name(), syncPlayer.getInventory(), syncPlayer.getArmorInventory(), syncPlayer.getEnderchest(), syncPlayer.getFoodLevel(), syncPlayer.getSaturation(), syncPlayer.getExhaustion(), syncPlayer.getSelectedSlot(), syncPlayer.getPotionEffects(), syncPlayer.getTotalExperience(), syncPlayer.getLevel(), syncPlayer.getExperience(), syncPlayer.getGamemode(), syncPlayer.getFlying());
                         } else {

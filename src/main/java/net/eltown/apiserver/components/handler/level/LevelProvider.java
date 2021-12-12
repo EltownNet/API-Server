@@ -5,6 +5,7 @@ import com.mongodb.MongoClientURI;
 import com.mongodb.client.MongoCollection;
 import lombok.SneakyThrows;
 import net.eltown.apiserver.Server;
+import net.eltown.apiserver.components.Provider;
 import net.eltown.apiserver.components.config.Config;
 import net.eltown.apiserver.components.handler.level.data.Level;
 import net.eltown.apiserver.components.handler.level.data.LevelReward;
@@ -14,26 +15,18 @@ import org.bson.Document;
 import java.util.HashMap;
 import java.util.concurrent.CompletableFuture;
 
-public class LevelProvider {
-
-    private final MongoClient client;
-    private final MongoCollection<Document> levelCollection, rewardCollection;
-    public final TinyRabbit tinyRabbit;
+public class LevelProvider extends Provider {
 
     private final HashMap<String, Level> cachedData = new HashMap<>();
     public final HashMap<Integer, LevelReward> cachedRewardData = new HashMap<>();
 
     @SneakyThrows
     public LevelProvider(final Server server) {
+        super(server, "player_level", "level_rewards");
         final Config config = server.getConfig();
-        this.client = new MongoClient(new MongoClientURI(config.getString("MongoDB.Uri")));
-        this.levelCollection = this.client.getDatabase(config.getString("MongoDB.GroupDB")).getCollection("player_level");
-        this.rewardCollection = this.client.getDatabase(config.getString("MongoDB.GroupDB")).getCollection("level_rewards");
-
-        this.tinyRabbit = new TinyRabbit("localhost", "API/Level[Main]");
 
         server.log("Leveldaten werden in den Cache geladen...");
-        for (final Document document : this.levelCollection.find()) {
+        for (final Document document : this.getCollection("player_level").find()) {
             this.cachedData.put(document.getString("player"), new Level(
                     document.getString("player"),
                     document.getInteger("level"),
@@ -41,7 +34,7 @@ public class LevelProvider {
             ));
         }
 
-        for (final Document document : this.rewardCollection.find()) {
+        for (final Document document : this.getCollection("level_rewards").find()) {
             this.cachedRewardData.put(document.getInteger("_id"), new LevelReward(
                     document.getInteger("_id"),
                     document.getString("description"),
@@ -55,7 +48,7 @@ public class LevelProvider {
         this.cachedData.put(player, new Level(player, 0, 0.0d));
 
         CompletableFuture.runAsync(() -> {
-            this.levelCollection.insertOne(new Document("player", player).append("level", 0).append("experience", 0.0d));
+            this.getCollection("player_level").insertOne(new Document("player", player).append("level", 0).append("experience", 0.0d));
         });
     }
 
@@ -72,7 +65,7 @@ public class LevelProvider {
         this.cachedData.put(level.getPlayer(), level);
 
         CompletableFuture.runAsync(() -> {
-            this.levelCollection.updateOne(new Document("player", level.getPlayer()),
+            this.getCollection("player_level").updateOne(new Document("player", level.getPlayer()),
                     new Document("$set", new Document("level", level.getLevel()).append("experience", level.getExperience())));
         });
     }
@@ -81,7 +74,7 @@ public class LevelProvider {
         this.cachedRewardData.put(level, new LevelReward(level, description, data));
 
         CompletableFuture.runAsync(() -> {
-            this.rewardCollection.insertOne(new Document("_id", level).append("description", description).append("data", data));
+            this.getCollection("level_rewards").insertOne(new Document("_id", level).append("description", description).append("data", data));
         });
     }
 
@@ -90,7 +83,7 @@ public class LevelProvider {
         this.cachedRewardData.put(level, new LevelReward(level, description, data));
 
         CompletableFuture.runAsync(() -> {
-            this.rewardCollection.updateOne(new Document("_id", level), new Document("$set", new Document("description", description).append("data", data)));
+            this.getCollection("level_rewards").updateOne(new Document("_id", level), new Document("$set", new Document("description", description).append("data", data)));
         });
     }
 
@@ -98,7 +91,7 @@ public class LevelProvider {
         this.cachedRewardData.remove(level);
 
         CompletableFuture.runAsync(() -> {
-           this.rewardCollection.findOneAndDelete(new Document("_id", level));
+           this.getCollection("level_rewards").findOneAndDelete(new Document("_id", level));
         });
     }
 

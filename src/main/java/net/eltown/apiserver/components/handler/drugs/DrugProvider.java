@@ -5,6 +5,7 @@ import com.mongodb.MongoClientURI;
 import com.mongodb.client.MongoCollection;
 import lombok.Getter;
 import net.eltown.apiserver.Server;
+import net.eltown.apiserver.components.Provider;
 import net.eltown.apiserver.components.config.Config;
 import net.eltown.apiserver.components.handler.drugs.data.Delivery;
 import org.bson.Document;
@@ -13,21 +14,16 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
-public class DrugProvider {
+public class DrugProvider extends Provider {
 
     @Getter
     private final Map<String, Delivery> deliveries = new HashMap<>();
-    private final MongoClient client;
-    private final MongoCollection<Document> deliveryCollection;
 
     public DrugProvider(final Server server) {
+        super(server, "drug_deliveries");
         server.log("Lieferungen werden in den Cache geladen...");
-
-        final Config config = server.getConfig();
-        this.client = new MongoClient(new MongoClientURI(config.getString("MongoDB.Uri")));
-        this.deliveryCollection = this.client.getDatabase(config.getString("MongoDB.CryptoDB")).getCollection("drug_deliveries");
-
-        for (final Document doc : this.deliveryCollection.find()) {
+        
+        for (final Document doc : this.getCollection("drug_deliveries").find()) {
             this.deliveries.put(doc.getString("_id"),
                     new Delivery(
                             doc.getString("_id"),
@@ -51,7 +47,7 @@ public class DrugProvider {
     public void updateDelivery(final Delivery delivery) {
         this.deliveries.put(delivery.getId(), delivery);
         CompletableFuture.runAsync(() -> {
-            this.deliveryCollection.updateOne(new Document("_id", delivery.getId()),
+            this.getCollection("drug_deliveries").updateOne(new Document("_id", delivery.getId()),
                     new Document("$set", new Document("receiver", delivery.getReceiver())
                             .append("type", delivery.getType())
                             .append("quality", delivery.getQuality())
@@ -67,7 +63,7 @@ public class DrugProvider {
     public void addDelivery(final Delivery delivery) {
         this.deliveries.put(delivery.getId(), delivery);
         CompletableFuture.runAsync(() -> {
-            this.deliveryCollection.insertOne(
+            this.getCollection("drug_deliveries").insertOne(
                     new Document("_id", delivery.getId())
                             .append("receiver", delivery.getReceiver())
                             .append("type", delivery.getType())
@@ -83,7 +79,7 @@ public class DrugProvider {
     public void removeDelivery(final Delivery delivery) {
         this.deliveries.remove(delivery.getId());
         CompletableFuture.runAsync(() -> {
-            this.deliveryCollection.deleteOne(new Document("_id", delivery.getId()));
+            this.getCollection("drug_deliveries").deleteOne(new Document("_id", delivery.getId()));
         });
     }
 

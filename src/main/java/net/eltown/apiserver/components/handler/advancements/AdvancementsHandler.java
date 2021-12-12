@@ -4,6 +4,7 @@ import lombok.SneakyThrows;
 import net.eltown.apiserver.Server;
 import net.eltown.apiserver.components.tinyrabbit.TinyRabbitListener;
 
+@Deprecated
 public class AdvancementsHandler {
 
     private final Server server;
