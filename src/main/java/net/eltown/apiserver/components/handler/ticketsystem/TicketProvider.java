@@ -5,6 +5,7 @@ import com.mongodb.MongoClientURI;
 import com.mongodb.client.MongoCollection;
 import lombok.SneakyThrows;
 import net.eltown.apiserver.Server;
+import net.eltown.apiserver.components.Provider;
 import net.eltown.apiserver.components.config.Config;
 import net.eltown.apiserver.components.handler.ticketsystem.data.Ticket;
 import net.eltown.apiserver.components.tinyrabbit.TinyRabbit;
@@ -16,24 +17,18 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
-public class TicketProvider {
-
-    private final MongoClient client;
-    private final MongoCollection<Document> ticketCollection;
-    public final TinyRabbit tinyRabbit;
+public class TicketProvider extends Provider {
 
     public final LinkedHashMap<String, Ticket> tickets = new LinkedHashMap<>();
 
     @SneakyThrows
     public TicketProvider(final Server server) {
-        final Config config = server.getConfig();
-        this.client = new MongoClient(new MongoClientURI(config.getString("MongoDB.Uri")));
-        this.ticketCollection = this.client.getDatabase(config.getString("MongoDB.GroupDB")).getCollection("tickets");
+        super(server, "tickets");
 
-        this.tinyRabbit = new TinyRabbit("localhost", "API/Ticketsystem[Main]");
+        this.createClient("API/Ticketsystem[Main]");
 
         server.log("Tickets werden in den Cache geladen...");
-        for (final Document document : this.ticketCollection.find()) {
+        for (final Document document : this.getCollection("tickets").find()) {
             this.tickets.put(document.getString("_id"), new Ticket(
                     document.getString("creator"),
                     document.getString("supporter"),
@@ -64,7 +59,7 @@ public class TicketProvider {
                     .append("messages", messages)
                     .append("dateOpened", this.getDate())
                     .append("dateClosed", "null");
-            this.ticketCollection.insertOne(document);
+            this.getCollection("tickets").insertOne(document);
         });
 
         this.tickets.put(id, new Ticket(creator, "null", id, subject, section, priority, messages, this.getDate(), "null"));
@@ -107,31 +102,31 @@ public class TicketProvider {
     public void setTicketSupporter(final String ticketId, final String supporter) {
         this.tickets.get(ticketId).setSupporter(supporter);
         CompletableFuture.runAsync(() -> {
-            this.ticketCollection.updateOne(new Document("_id", ticketId), new Document("$set", new Document("supporter", supporter)));
+            this.getCollection("tickets").updateOne(new Document("_id", ticketId), new Document("$set", new Document("supporter", supporter)));
         });
     }
 
     public void setTicketPriority(final String ticketId, final String priority) {
         this.tickets.get(ticketId).setPriority(priority);
         CompletableFuture.runAsync(() -> {
-            this.ticketCollection.updateOne(new Document("_id", ticketId), new Document("$set", new Document("priority", priority)));
+            this.getCollection("tickets").updateOne(new Document("_id", ticketId), new Document("$set", new Document("priority", priority)));
         });
     }
 
     public void closeTicket(final String ticketId) {
         this.tickets.get(ticketId).setDateClosed(this.getDate());
         CompletableFuture.runAsync(() -> {
-            this.ticketCollection.updateOne(new Document("_id", ticketId), new Document("$set", new Document("dateClosed", this.getDate())));
+            this.getCollection("tickets").updateOne(new Document("_id", ticketId), new Document("$set", new Document("dateClosed", this.getDate())));
         });
     }
 
     public void addNewTicketMessage(final String ticketId, final String sender, final String message) {
         CompletableFuture.runAsync(() -> {
-            final Document document = this.ticketCollection.find(new Document("_id", ticketId)).first();
+            final Document document = this.getCollection("tickets").find(new Document("_id", ticketId)).first();
             if (document != null) {
                 final List<String> list = document.getList("messages", String.class);
                 list.add(sender + ">:<" + message);
-                this.ticketCollection.updateOne(new Document("_id", ticketId), new Document("$set", new Document("messages", list)));
+                this.getCollection("tickets").updateOne(new Document("_id", ticketId), new Document("$set", new Document("messages", list)));
                 this.tickets.get(ticketId).setMessages(list);
             }
         });

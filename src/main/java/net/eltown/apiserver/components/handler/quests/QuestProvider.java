@@ -5,6 +5,7 @@ import com.mongodb.MongoClientURI;
 import com.mongodb.client.MongoCollection;
 import lombok.SneakyThrows;
 import net.eltown.apiserver.Server;
+import net.eltown.apiserver.components.Provider;
 import net.eltown.apiserver.components.config.Config;
 import net.eltown.apiserver.components.handler.quests.data.Quest;
 import net.eltown.apiserver.components.handler.quests.data.QuestPlayer;
@@ -18,26 +19,17 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class QuestProvider {
-
-    private final MongoClient client;
-    private final MongoCollection<Document> questCollection, questDataCollection;
-    public final TinyRabbit tinyRabbit;
+public class QuestProvider extends Provider {
 
     public final HashMap<String, Quest> cachedQuests = new HashMap<>();
     public final HashMap<String, QuestPlayer> cachedQuestPlayer = new HashMap<>();
 
     @SneakyThrows
     public QuestProvider(final Server server) {
-        final Config config = server.getConfig();
-        this.client = new MongoClient(new MongoClientURI(config.getString("MongoDB.Uri")));
-        this.questCollection = this.client.getDatabase(config.getString("MongoDB.GroupDB")).getCollection("quests_quests");
-        this.questDataCollection = this.client.getDatabase(config.getString("MongoDB.GroupDB")).getCollection("quests_data");
-
-        this.tinyRabbit = new TinyRabbit("localhost", "API/Quests[Main]");
+        super(server, "quests_quests", "quests_data");
 
         server.log("Quests werden in den Cache geladen...");
-        for (final Document document : this.questCollection.find()) {
+        for (final Document document : this.getCollection("quests_quests").find()) {
             this.cachedQuests.put(document.getString("_id"), new Quest(
                     document.getString("_id"),
                     document.getString("displayName"),
@@ -52,7 +44,7 @@ public class QuestProvider {
         server.log(this.cachedQuests.size() + " Quests wurden in den Cache geladen...");
 
         server.log("QuestDaten werden in den Cache geladen...");
-        for (final Document document : this.questDataCollection.find()) {
+        for (final Document document : this.getCollection("quests_data").find()) {
             final List<String> rawData = document.getList("data", String.class);
             final List<QuestPlayer.QuestPlayerData> questPlayerData = new ArrayList<>();
 
@@ -73,7 +65,7 @@ public class QuestProvider {
         this.cachedQuests.put(nameId, new Quest(nameId, displayName, description, data, required, expire, rewardData, link));
 
         CompletableFuture.runAsync(() -> {
-            this.questCollection.insertOne(new Document("_id", nameId)
+            this.getCollection("quests_quests").insertOne(new Document("_id", nameId)
                     .append("displayName", displayName)
                     .append("description", description)
                     .append("data", data)
@@ -93,7 +85,7 @@ public class QuestProvider {
         this.cachedQuests.remove(nameId);
 
         CompletableFuture.runAsync(() -> {
-            this.questCollection.findOneAndDelete(new Document("_id", nameId));
+            this.getCollection("quests_quests").findOneAndDelete(new Document("_id", nameId));
         });
     }
 
@@ -102,7 +94,7 @@ public class QuestProvider {
         this.cachedQuests.put(nameId, new Quest(nameId, displayName, description, data, required, expire, rewardData, link));
 
         CompletableFuture.runAsync(() -> {
-            this.questCollection.updateOne(new Document("_id", nameId), new Document("$set", new Document("displayName", displayName).append("description", description).append("data", data).append("required", required).append("expire", expire).append("rewardData", rewardData).append("link", link)));
+            this.getCollection("quests_quests").updateOne(new Document("_id", nameId), new Document("$set", new Document("displayName", displayName).append("description", description).append("data", data).append("required", required).append("expire", expire).append("rewardData", rewardData).append("link", link)));
         });
     }
 
@@ -110,7 +102,7 @@ public class QuestProvider {
         this.cachedQuestPlayer.put(player, new QuestPlayer(player, new ArrayList<>()));
 
         CompletableFuture.runAsync(() -> {
-            this.questDataCollection.insertOne(new Document("_id", player).append("data", new ArrayList<String>()));
+            this.getCollection("quests_data").insertOne(new Document("_id", player).append("data", new ArrayList<String>()));
         });
     }
 
@@ -127,12 +119,12 @@ public class QuestProvider {
         this.cachedQuestPlayer.get(player).setQuestPlayerData(playerData);
 
         CompletableFuture.runAsync(() -> {
-            final Document document = this.questDataCollection.find(new Document("_id", player)).first();
+            final Document document = this.getCollection("quests_data").find(new Document("_id", player)).first();
             assert document != null;
             final List<String> list = document.getList("data", String.class);
             list.add(quest.getNameId() + "-:-" + (System.currentTimeMillis() + quest.getExpire()) + "-:-" + quest.getRequired() + "-:-" + 0);
 
-            this.questDataCollection.updateOne(new Document("_id", player), new Document("$set", new Document("data", list)));
+            this.getCollection("quests_data").updateOne(new Document("_id", player), new Document("$set", new Document("data", list)));
         });
     }
 
@@ -145,7 +137,7 @@ public class QuestProvider {
                     e.setCurrent(current);
 
                     CompletableFuture.runAsync(() -> {
-                        final Document document = this.questDataCollection.find(new Document("_id", player)).first();
+                        final Document document = this.getCollection("quests_data").find(new Document("_id", player)).first();
                         assert document != null;
                         final List<String> list = document.getList("data", String.class);
                         list.removeIf(s -> s.startsWith(questNameId));
@@ -153,7 +145,7 @@ public class QuestProvider {
                         assert questPlayerData != null;
                         list.add(questPlayerData.getQuestNameId() + "-:-" + questPlayerData.getExpire() + "-:-" + questPlayerData.getRequired() + "-:-" + current);
 
-                        this.questDataCollection.updateOne(new Document("_id", player), new Document("$set", new Document("data", list)));
+                        this.getCollection("quests_data").updateOne(new Document("_id", player), new Document("$set", new Document("data", list)));
                     });
                 }
             }
@@ -167,13 +159,13 @@ public class QuestProvider {
         this.cachedQuestPlayer.get(player).setQuestPlayerData(playerData);
 
         CompletableFuture.runAsync(() -> {
-            final Document document = this.questDataCollection.find(new Document("_id", player)).first();
+            final Document document = this.getCollection("quests_data").find(new Document("_id", player)).first();
             assert document != null;
             final List<String> list = document.getList("data", String.class);
             assert questPlayerData != null;
             list.removeIf(s -> s.startsWith(questPlayerData.getQuestNameId()));
 
-            this.questDataCollection.updateOne(new Document("_id", player), new Document("$set", new Document("data", list)));
+            this.getCollection("quests_data").updateOne(new Document("_id", player), new Document("$set", new Document("data", list)));
         });
     }
 

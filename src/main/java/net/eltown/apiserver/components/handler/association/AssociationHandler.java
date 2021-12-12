@@ -2,34 +2,30 @@ package net.eltown.apiserver.components.handler.association;
 
 import lombok.SneakyThrows;
 import net.eltown.apiserver.Server;
+import net.eltown.apiserver.components.Handler;
+import net.eltown.apiserver.components.Provider;
 import net.eltown.apiserver.components.tinyrabbit.TinyRabbitListener;
 
-public class AssociationHandler {
+public class AssociationHandler extends Handler<AssociationProvider> {
 
-    private final Server server;
-    private final AssociationProvider provider;
-    private final TinyRabbitListener tinyRabbitListener;
 
     @SneakyThrows
     public AssociationHandler(final Server server) {
-        this.server = server;
-        this.tinyRabbitListener = new TinyRabbitListener("localhost");
-        this.tinyRabbitListener.throwExceptions(true);
-        this.provider = new AssociationProvider(server);
+        super(server, "AssociationHandler", new AssociationProvider(server));
         this.startCallbacking();
     }
 
     private void startCallbacking() {
-        this.server.getExecutor().execute(() -> {
-            this.tinyRabbitListener.receive(delivery -> {
+        this.getServer().getExecutor().execute(() -> {
+            this.getTinyRabbitListener().receive(delivery -> {
                 final String[] d = delivery.getData();
                 switch (AssociationCalls.valueOf(delivery.getKey().toUpperCase())) {
 
                 }
             }, "API/Associations[Receive]", "api.associations.receive");
         });
-        this.server.getExecutor().execute(() -> {
-            this.tinyRabbitListener.callback(request -> {
+        this.getServer().getExecutor().execute(() -> {
+            this.getTinyRabbitListener().callback(request -> {
                 final String[] d = request.getData();
                 switch (AssociationCalls.valueOf(request.getKey().toUpperCase())) {
 

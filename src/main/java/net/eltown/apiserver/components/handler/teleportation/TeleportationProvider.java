@@ -5,6 +5,7 @@ import com.mongodb.MongoClientURI;
 import com.mongodb.client.MongoCollection;
 import lombok.SneakyThrows;
 import net.eltown.apiserver.Server;
+import net.eltown.apiserver.components.Provider;
 import net.eltown.apiserver.components.config.Config;
 import net.eltown.apiserver.components.handler.teleportation.data.Home;
 import net.eltown.apiserver.components.handler.teleportation.data.Warp;
@@ -15,11 +16,7 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class TeleportationProvider {
-
-    private final MongoClient client;
-    private final MongoCollection<Document> homeCollection, warpCollection;
-    public final TinyRabbit tinyRabbit;
+public class TeleportationProvider extends Provider {
 
     public final HashMap<String, Home> homes = new HashMap<>();
     public final HashMap<String, Warp> warps = new HashMap<>();
@@ -29,16 +26,12 @@ public class TeleportationProvider {
 
     @SneakyThrows
     public TeleportationProvider(final Server server) {
-        final Config config = server.getConfig();
-        this.client = new MongoClient(new MongoClientURI(config.getString("MongoDB.Uri")));
-        this.homeCollection = this.client.getDatabase(config.getString("MongoDB.GroupDB")).getCollection("teleportation_homes");
-        this.warpCollection = this.client.getDatabase(config.getString("MongoDB.GroupDB")).getCollection("teleportation_warps");
+        super(server, "teleportation_homes", "teleportation_warps");
 
-        this.tinyRabbit = new TinyRabbit("localhost", "API/Teleportation[Main]");
-        this.tinyRabbit.throwExceptions(true);
+        this.createClient("API/Teleportation[Main]");
 
         server.log("Homes werden in den Cache geladen...");
-        for (final Document document : this.homeCollection.find()) {
+        for (final Document document : this.getCollection("teleportation_homes").find()) {
             this.homes.put(document.getString("player") + "/" + document.getString("home"),
                     new Home(document.getString("home"),
                             document.getString("player"),
@@ -54,7 +47,7 @@ public class TeleportationProvider {
         server.log(this.homes.size() + " Homes wurden in den Cache geladen...");
 
         server.log("Warps werden in den Cache geladen...");
-        for (final Document document : this.warpCollection.find()) {
+        for (final Document document : this.getCollection("teleportation_warps").find()) {
             this.warps.put(document.getString("warp"),
                     new Warp(document.getString("warp"),
                             document.getString("displayName"),
@@ -74,7 +67,7 @@ public class TeleportationProvider {
     public void createHome(final String name, final String player, final String server, final String world, final double x, final double y, final double z, final double yaw, final double pitch) {
         this.homes.put(player + "/" + name, new Home(name, player, server, world, x, y, z, yaw, pitch));
         CompletableFuture.runAsync(() -> {
-            this.homeCollection.insertOne(new Document("home", name)
+            this.getCollection("teleportation_homes").insertOne(new Document("home", name)
                     .append("player", player)
                     .append("server", server)
                     .append("world", world)
@@ -92,15 +85,15 @@ public class TeleportationProvider {
     }
 
     public void deleteHome(final String name, final String player) {
-        CompletableFuture.runAsync(() -> this.homeCollection.findOneAndDelete(new Document("home", name).append("player", player)));
+        CompletableFuture.runAsync(() -> this.getCollection("teleportation_homes").findOneAndDelete(new Document("home", name).append("player", player)));
         this.homes.remove(player + "/" + name);
     }
 
     public void deleteServerHomes(final String server) {
         CompletableFuture.runAsync(() -> {
-            for (final Document document : this.homeCollection.find()) {
+            for (final Document document : this.getCollection("teleportation_homes").find()) {
                 if (document.getString("server").equals(server)) {
-                    this.homeCollection.deleteOne(document);
+                    this.getCollection("teleportation_homes").deleteOne(document);
                     this.homes.remove(document.getString("player") + "/" + document.getString("home"));
                 }
             }
@@ -109,14 +102,14 @@ public class TeleportationProvider {
 
     public void updateHomeName(final String name, final String player, final String newName) {
         CompletableFuture.runAsync(() -> {
-            this.homeCollection.updateOne(new Document("home", name).append("player", player), new Document("$set", new Document("home", newName)));
+            this.getCollection("teleportation_homes").updateOne(new Document("home", name).append("player", player), new Document("$set", new Document("home", newName)));
         });
         this.homes.get(player + "/" + name).setName(newName);
     }
 
     public void updateHomePosition(final String name, final String player, final String server, final String world, final double x, final double y, final double z, final double yaw, final double pitch) {
         CompletableFuture.runAsync(() -> {
-            this.homeCollection.updateMany(new Document("home", name).append("player", player), new Document("$set",
+            this.getCollection("teleportation_homes").updateMany(new Document("home", name).append("player", player), new Document("$set",
                     new Document("server", server)
                             .append("world", world)
                             .append("x", x)
@@ -149,7 +142,7 @@ public class TeleportationProvider {
     public void createWarp(final String name, final String displayName, final String imageUrl, final String server, final String world, final double x, final double y, final double z, final double yaw, final double pitch) {
         this.warps.put(name, new Warp(name, displayName, imageUrl, server, world, x, y, z, yaw, pitch));
         CompletableFuture.runAsync(() -> {
-            this.warpCollection.insertOne(new Document("warp", name)
+            this.getCollection("teleportation_warps").insertOne(new Document("warp", name)
                     .append("displayName", displayName)
                     .append("imageUrl", imageUrl)
                     .append("server", server)
@@ -168,27 +161,27 @@ public class TeleportationProvider {
     }
 
     public void deleteWarp(final String name) {
-        CompletableFuture.runAsync(() -> this.warpCollection.findOneAndDelete(new Document("warp", name)));
+        CompletableFuture.runAsync(() -> this.getCollection("teleportation_warps").findOneAndDelete(new Document("warp", name)));
         this.warps.remove(name);
     }
 
     public void updateWarpName(final String name, final String displayName) {
         CompletableFuture.runAsync(() -> {
-            this.warpCollection.updateOne(new Document("warp", name), new Document("$set", new Document("displayName", displayName)));
+            this.getCollection("teleportation_warps").updateOne(new Document("warp", name), new Document("$set", new Document("displayName", displayName)));
         });
         this.warps.get(name).setDisplayName(displayName);
     }
 
     public void updateWarpImage(final String name, final String imageUrl) {
         CompletableFuture.runAsync(() -> {
-            this.warpCollection.updateOne(new Document("warp", name), new Document("$set", new Document("imageUrl", imageUrl)));
+            this.getCollection("teleportation_warps").updateOne(new Document("warp", name), new Document("$set", new Document("imageUrl", imageUrl)));
         });
         this.warps.get(name).setImageUrl(imageUrl);
     }
 
     public void updateWarpPosition(final String name, final String server, final String world, final double x, final double y, final double z, final double yaw, final double pitch) {
         CompletableFuture.runAsync(() -> {
-            this.warpCollection.updateMany(new Document("warp", name), new Document("$set",
+            this.getCollection("teleportation_warps").updateMany(new Document("warp", name), new Document("$set",
                     new Document("server", server)
                             .append("world", world)
                             .append("x", x)

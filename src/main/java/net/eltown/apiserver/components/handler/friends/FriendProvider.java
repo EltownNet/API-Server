@@ -5,6 +5,7 @@ import com.mongodb.MongoClientURI;
 import com.mongodb.client.MongoCollection;
 import lombok.SneakyThrows;
 import net.eltown.apiserver.Server;
+import net.eltown.apiserver.components.Provider;
 import net.eltown.apiserver.components.config.Config;
 import net.eltown.apiserver.components.handler.friends.data.FriendData;
 import net.eltown.apiserver.components.tinyrabbit.TinyRabbit;
@@ -15,24 +16,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
-public class FriendProvider {
-
-    private final MongoClient client;
-    private final MongoCollection<Document> friendsCollection;
-    public final TinyRabbit tinyRabbit;
+public class FriendProvider extends Provider {
 
     public final HashMap<String, FriendData> cachedFriendData = new HashMap<>();
 
     @SneakyThrows
     public FriendProvider(final Server server) {
-        final Config config = server.getConfig();
-        this.client = new MongoClient(new MongoClientURI(config.getString("MongoDB.Uri")));
-        this.friendsCollection = this.client.getDatabase(config.getString("MongoDB.GroupDB")).getCollection("friends");
-
-        this.tinyRabbit = new TinyRabbit("localhost", "API/Friends[Main]");
+        super(server, "friends");
 
         server.log("Freunde-Daten werden in den Cache geladen...");
-        for (final Document document : this.friendsCollection.find()) {
+        for (final Document document : this.getCollection("friends").find()) {
             this.cachedFriendData.put(document.getString("_id"), new FriendData(
                     document.getString("_id"),
                     document.getList("friends", String.class),
@@ -46,7 +39,7 @@ public class FriendProvider {
         this.cachedFriendData.put(player, new FriendData(player, new ArrayList<>(), new ArrayList<>()));
 
         CompletableFuture.runAsync(() -> {
-            this.friendsCollection.insertOne(new Document("_id", player).append("friends", new ArrayList<String>()).append("requests", new ArrayList<String>()));
+            this.getCollection("friends").insertOne(new Document("_id", player).append("friends", new ArrayList<String>()).append("requests", new ArrayList<String>()));
         });
     }
 
@@ -58,13 +51,13 @@ public class FriendProvider {
         this.cachedFriendData.get(target).getRequests().add(player);
 
         CompletableFuture.runAsync(() -> {
-            final Document tD = this.friendsCollection.find(new Document("_id", target)).first();
+            final Document tD = this.getCollection("friends").find(new Document("_id", target)).first();
             assert tD != null;
 
             final List<String> tDSet = tD.getList("requests", String.class);
             tDSet.add(player);
 
-            this.friendsCollection.updateOne(new Document("_id", target), new Document("$set", new Document("requests", tDSet)));
+            this.getCollection("friends").updateOne(new Document("_id", target), new Document("$set", new Document("requests", tDSet)));
         });
     }
 
@@ -72,13 +65,13 @@ public class FriendProvider {
         this.cachedFriendData.get(player).getRequests().remove(target);
 
         CompletableFuture.runAsync(() -> {
-            final Document tD = this.friendsCollection.find(new Document("_id", player)).first();
+            final Document tD = this.getCollection("friends").find(new Document("_id", player)).first();
             assert tD != null;
 
             final List<String> tDSet = tD.getList("requests", String.class);
             tDSet.remove(target);
 
-            this.friendsCollection.updateOne(new Document("_id", player), new Document("$set", new Document("requests", tDSet)));
+            this.getCollection("friends").updateOne(new Document("_id", player), new Document("$set", new Document("requests", tDSet)));
         });
     }
 
@@ -87,8 +80,8 @@ public class FriendProvider {
         this.cachedFriendData.get(target).getFriends().add(player);
 
         CompletableFuture.runAsync(() -> {
-            final Document pD = this.friendsCollection.find(new Document("_id", player)).first();
-            final Document tD = this.friendsCollection.find(new Document("_id", target)).first();
+            final Document pD = this.getCollection("friends").find(new Document("_id", player)).first();
+            final Document tD = this.getCollection("friends").find(new Document("_id", target)).first();
             assert pD != null && tD != null;
 
             final List<String> pDSet = pD.getList("friends", String.class);
@@ -96,8 +89,8 @@ public class FriendProvider {
             final List<String> tDSet = tD.getList("friends", String.class);
             tDSet.add(player);
 
-            this.friendsCollection.updateOne(new Document("_id", player), new Document("$set", new Document("friends", pDSet)));
-            this.friendsCollection.updateOne(new Document("_id", target), new Document("$set", new Document("friends", tDSet)));
+            this.getCollection("friends").updateOne(new Document("_id", player), new Document("$set", new Document("friends", pDSet)));
+            this.getCollection("friends").updateOne(new Document("_id", target), new Document("$set", new Document("friends", tDSet)));
         });
     }
 
@@ -106,8 +99,8 @@ public class FriendProvider {
         this.cachedFriendData.get(target).getFriends().remove(player);
 
         CompletableFuture.runAsync(() -> {
-            final Document pD = this.friendsCollection.find(new Document("_id", player)).first();
-            final Document tD = this.friendsCollection.find(new Document("_id", target)).first();
+            final Document pD = this.getCollection("friends").find(new Document("_id", player)).first();
+            final Document tD = this.getCollection("friends").find(new Document("_id", target)).first();
             assert pD != null && tD != null;
 
             final List<String> pDSet = pD.getList("friends", String.class);
@@ -115,8 +108,8 @@ public class FriendProvider {
             final List<String> tDSet = tD.getList("friends", String.class);
             tDSet.remove(player);
 
-            this.friendsCollection.updateOne(new Document("_id", player), new Document("$set", new Document("friends", pDSet)));
-            this.friendsCollection.updateOne(new Document("_id", target), new Document("$set", new Document("friends", tDSet)));
+            this.getCollection("friends").updateOne(new Document("_id", player), new Document("$set", new Document("friends", pDSet)));
+            this.getCollection("friends").updateOne(new Document("_id", target), new Document("$set", new Document("friends", tDSet)));
         });
     }
 

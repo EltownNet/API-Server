@@ -5,6 +5,7 @@ import com.mongodb.MongoClientURI;
 import com.mongodb.client.MongoCollection;
 import lombok.SneakyThrows;
 import net.eltown.apiserver.Server;
+import net.eltown.apiserver.components.Provider;
 import net.eltown.apiserver.components.config.Config;
 import net.eltown.apiserver.components.handler.giftkeys.data.Giftkey;
 import net.eltown.apiserver.components.tinyrabbit.TinyRabbit;
@@ -18,24 +19,16 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
-public class GiftkeyProvider {
-
-    private final MongoClient client;
-    private final MongoCollection<Document> giftkeyCollection;
-    public final TinyRabbit tinyRabbit;
+public class GiftkeyProvider extends Provider {
 
     public final LinkedHashMap<String, Giftkey> giftkeys = new LinkedHashMap<>();
 
     @SneakyThrows
     public GiftkeyProvider(final Server server) {
-        final Config config = server.getConfig();
-        this.client = new MongoClient(new MongoClientURI(config.getString("MongoDB.Uri")));
-        this.giftkeyCollection = this.client.getDatabase(config.getString("MongoDB.GroupDB")).getCollection("giftkeys");
-
-        this.tinyRabbit = new TinyRabbit("localhost", "API/Giftkeys[Main]");
+        super(server, "giftkeys");
 
         server.log("Giftkeys werden in den Cache geladen...");
-        for (final Document document : this.giftkeyCollection.find()) {
+        for (final Document document : this.getCollection("giftkeys").find()) {
             this.giftkeys.put(document.getString("_id"), new Giftkey(
                     document.getString("_id"),
                     document.getInteger("maxUses"),
@@ -51,7 +44,7 @@ public class GiftkeyProvider {
         final String key = this.createKey(5) + "-" + this.createKey(5);
         this.giftkeys.put(key, new Giftkey(key, maxUses, new ArrayList<>(), rewards, marks));
         CompletableFuture.runAsync(() -> {
-            this.giftkeyCollection.insertOne(new Document("_id", key).append("maxUses", maxUses).append("uses", new ArrayList<>()).append("rewards", rewards).append("marks", marks));
+            this.getCollection("giftkeys").insertOne(new Document("_id", key).append("maxUses", maxUses).append("uses", new ArrayList<>()).append("rewards", rewards).append("marks", marks));
         });
         keyCallback.accept(key);
     }
@@ -70,7 +63,7 @@ public class GiftkeyProvider {
         list.add(player);
         giftkey.setUses(list);
         CompletableFuture.runAsync(() -> {
-            this.giftkeyCollection.updateOne(new Document("_id", key), new Document("$set", new Document("uses", list)));
+            this.getCollection("giftkeys").updateOne(new Document("_id", key), new Document("$set", new Document("uses", list)));
 
             if (list.size() >= giftkey.getMaxUses()) this.deleteKey(key);
         });
@@ -110,7 +103,7 @@ public class GiftkeyProvider {
             this.giftkeys.get(key).setMarks(list);
 
             CompletableFuture.runAsync(() -> {
-                this.giftkeyCollection.updateOne(new Document("_id", key), new Document("$set", new Document("marks", list)));
+                this.getCollection("giftkeys").updateOne(new Document("_id", key), new Document("$set", new Document("marks", list)));
             });
         } catch (final Exception e) {
             e.printStackTrace();
@@ -120,7 +113,7 @@ public class GiftkeyProvider {
     public void deleteKey(final String key) {
         this.giftkeys.remove(key);
         CompletableFuture.runAsync(() -> {
-            this.giftkeyCollection.findOneAndDelete(new Document("_id", key));
+            this.getCollection("giftkeys").findOneAndDelete(new Document("_id", key));
         });
     }
 
