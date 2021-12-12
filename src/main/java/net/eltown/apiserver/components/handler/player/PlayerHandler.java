@@ -14,7 +14,6 @@ public class PlayerHandler {
     private final TinyRabbitListener listener;
     private final Server server;
     private final PlayerProvider provider;
-    private final List<String> isSynced = new ArrayList<>();
 
     @SneakyThrows
     public PlayerHandler(final Server server, final Connection connection) {
@@ -33,7 +32,7 @@ public class PlayerHandler {
                 final String[] request = delivery.getData();
 
                 switch (PlayerCalls.valueOf(delivery.getKey())) {
-                    case REQUEST_SETSYNC:
+                    case REQUEST_SETSYNC -> {
                         SyncPlayer set = new SyncPlayer(
                                 request[2],
                                 request[3],
@@ -51,13 +50,12 @@ public class PlayerHandler {
                                 true
                         );
                         this.provider.set(request[1], set);
-                        this.isSynced.remove(request[1]);
-                        break;
-                    case REQUEST_SETNOSYNC:
+                    }
+                    case REQUEST_SETNOSYNC -> {
                         SyncPlayer player = this.provider.get(request[1]);
                         player.setCanSync(false);
                         this.provider.set(request[1], player);
-                        break;
+                    }
                 }
 
             }), "API/Sync[Receive]", "api.sync.receive");
@@ -70,8 +68,7 @@ public class PlayerHandler {
                 switch (PlayerCalls.valueOf(request.getKey())) {
                     case REQUEST_SYNC:
                         final SyncPlayer syncPlayer = this.provider.get(request.getData()[1]);
-                        if (syncPlayer.isCanSync() && !isSynced.contains(request.getData()[1])) {
-                            this.isSynced.add(request.getData()[1]);
+                        if (syncPlayer.isCanSync()) {
                             request.answer(PlayerCalls.GOT_SYNC.name(), syncPlayer.getInventory(), syncPlayer.getArmorInventory(), syncPlayer.getEnderchest(), syncPlayer.getFoodLevel(), syncPlayer.getSaturation(), syncPlayer.getExhaustion(), syncPlayer.getSelectedSlot(), syncPlayer.getPotionEffects(), syncPlayer.getTotalExperience(), syncPlayer.getLevel(), syncPlayer.getExperience(), syncPlayer.getGamemode(), syncPlayer.getFlying());
                         } else {
                             request.answer(PlayerCalls.GOT_NOSYNC.name(), request.getData()[1]);
