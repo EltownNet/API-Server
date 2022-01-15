@@ -29,11 +29,8 @@ public class ShopProvider extends Provider {
         server.log("Shop Preise werden in den Cache geladen...");
 
         for (final Document e : this.getCollection("shop_prices").find()) {
-            final String[] splitId = e.getString("_id").split(":");
-
-            final int[] id = new int[]{Integer.parseInt(splitId[0]), Integer.parseInt(splitId[1])};
-            this.prices.put(this.stringId(id),
-                    new ItemPrice(id, e.getDouble("price"), e.getDouble("minBuy"), e.getDouble("minSell"), e.getInteger("bought"), e.getInteger("sold"))
+            this.prices.put(e.getString("_id"),
+                    new ItemPrice(e.getString("_id"), e.getDouble("price"), e.getDouble("minBuy"), e.getDouble("minSell"), e.getInteger("bought"), e.getInteger("sold"))
             );
         }
 
@@ -42,15 +39,15 @@ public class ShopProvider extends Provider {
         task.run();
     }
 
-    public double[] getPrice(final int[] id) {
-        if (this.prices.containsKey(this.stringId(id))) {
-            final ItemPrice price = this.prices.get(this.stringId(id));
+    public double[] getPrice(final String namespaceId) {
+        if (this.prices.containsKey(namespaceId)) {
+            final ItemPrice price = this.prices.get(namespaceId);
             return new double[]{
                     Math.max(price.getPrice(), price.getMinBuy()),
                     Math.max(price.getPrice() * 0.23, price.getMinSell())
             };
         } else {
-            final ItemPrice price = this.createPrice(id);
+            final ItemPrice price = this.createPrice(namespaceId);
             return new double[]{
                     price.getPrice(),
                     price.getPrice() * 0.23
@@ -63,37 +60,37 @@ public class ShopProvider extends Provider {
         return .23 * d;
     }
 
-    public void setMinBuy(final int[] id, final double minBuy) {
-        final ItemPrice ip = this.prices.get(stringId(id));
+    public void setMinBuy(final String namespaceId, final double minBuy) {
+        final ItemPrice ip = this.prices.get(namespaceId);
         ip.setMinBuy(minBuy);
         this.updatePrice(ip);
     }
 
-    public void setMinSell(final int[] id, final double minSell) {
-        final ItemPrice ip = this.prices.get(stringId(id));
+    public void setMinSell(final String namespaceId, final double minSell) {
+        final ItemPrice ip = this.prices.get(namespaceId);
         ip.setMinSell(minSell);
         this.updatePrice(ip);
     }
 
-    public void setPrice(final int[] id, final double price) {
-        final ItemPrice ip = this.prices.get(stringId(id));
+    public void setPrice(final String namespaceId, final double price) {
+        final ItemPrice ip = this.prices.get(namespaceId);
         ip.setPrice(price);
         this.updatePrice(ip);
     }
 
-    public void addBought(final int[] id, final int amount) {
-        final ItemPrice price = this.prices.get(this.stringId(id));
+    public void addBought(final String namespaceId, final int amount) {
+        final ItemPrice price = this.prices.get(namespaceId);
         price.addBought(amount);
-        this.getPrices().put(this.stringId(price.getId()), price);
-        this.toUpdate.add(this.stringId(id));
+        this.getPrices().put(price.getNamespaceId(), price);
+        this.toUpdate.add(namespaceId);
         if (price.getBought() >= amountFactor * 2) this.updatePrices();
     }
 
-    public void addSold(final int[] id, final int amount) {
-        final ItemPrice price = this.prices.get(this.stringId(id));
+    public void addSold(final String namespaceId, final int amount) {
+        final ItemPrice price = this.prices.get(namespaceId);
         price.addSold(amount);
-        this.getPrices().put(this.stringId(price.getId()), price);
-        this.toUpdate.add(this.stringId(id));
+        this.getPrices().put(price.getNamespaceId(), price);
+        this.toUpdate.add(namespaceId);
         if (price.getSold() >= amountFactor * 2) this.updatePrices();
     }
 
@@ -122,7 +119,7 @@ public class ShopProvider extends Provider {
                 e.setBought(0);
                 e.setSold(0);
 
-                this.toUpdate.add(this.stringId(e.getId()));
+                this.toUpdate.add(e.getNamespaceId());
                 count.incrementAndGet();
             }
         });
@@ -131,10 +128,10 @@ public class ShopProvider extends Provider {
     }
 
     public void updatePrice(final ItemPrice price) {
-        this.prices.put(this.stringId(price.getId()), price);
+        this.prices.put(price.getNamespaceId(), price);
         CompletableFuture.runAsync(() -> {
             try {
-                this.getCollection("shop_prices").updateOne(new Document("_id", this.stringId(price.getId())),
+                this.getCollection("shop_prices").updateOne(new Document("_id", price.getNamespaceId()),
                         new Document("$set", new Document("price", price.getPrice())
                                 .append("bought", price.getBought())
                                 .append("sold", price.getSold())
@@ -148,12 +145,12 @@ public class ShopProvider extends Provider {
         });
     }
 
-    private ItemPrice createPrice(final int[] id) {
-        final ItemPrice itemPrice = new ItemPrice(id, 5, 0.25, 0.01, 0, 0);
-        this.getPrices().put(stringId(id), itemPrice);
+    private ItemPrice createPrice(final String namespaceId) {
+        final ItemPrice itemPrice = new ItemPrice(namespaceId, 5, 0.25, 0.01, 0, 0);
+        this.getPrices().put(namespaceId, itemPrice);
         CompletableFuture.runAsync(() -> {
             this.getCollection("shop_prices").insertOne(
-                    new Document("_id", this.stringId(id))
+                    new Document("_id", namespaceId)
                             .append("price", 5d)
                             .append("bought", 0)
                             .append("sold", 0)
@@ -161,12 +158,7 @@ public class ShopProvider extends Provider {
                             .append("minSell", 0.01d)
             );
         });
-
         return itemPrice;
-    }
-
-    public String stringId(final int[] id) {
-        return id[0] + ":" + id[1];
     }
 
 }

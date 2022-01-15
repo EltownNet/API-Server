@@ -9,7 +9,7 @@ import lombok.Setter;
 @Getter
 public class ItemPrice {
 
-    private int[] id;
+    private String namespaceId;
     private double price, minBuy, minSell;
     private int bought, sold;
 
