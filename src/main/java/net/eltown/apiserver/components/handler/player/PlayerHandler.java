@@ -1,14 +1,9 @@
 package net.eltown.apiserver.components.handler.player;
 
-import com.rabbitmq.client.Connection;
 import lombok.SneakyThrows;
 import net.eltown.apiserver.Server;
 import net.eltown.apiserver.components.Handler;
 import net.eltown.apiserver.components.handler.player.data.SyncPlayer;
-import net.eltown.apiserver.components.tinyrabbit.TinyRabbitListener;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public class PlayerHandler extends Handler<PlayerProvider> {
 

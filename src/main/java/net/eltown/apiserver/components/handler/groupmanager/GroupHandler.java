@@ -3,10 +3,8 @@ package net.eltown.apiserver.components.handler.groupmanager;
 import lombok.SneakyThrows;
 import net.eltown.apiserver.Server;
 import net.eltown.apiserver.components.Handler;
-import net.eltown.apiserver.components.Provider;
 import net.eltown.apiserver.components.handler.groupmanager.data.Group;
 import net.eltown.apiserver.components.handler.groupmanager.data.GroupedPlayer;
-import net.eltown.apiserver.components.tinyrabbit.TinyRabbitListener;
 
 import java.util.ArrayList;
 import java.util.List;

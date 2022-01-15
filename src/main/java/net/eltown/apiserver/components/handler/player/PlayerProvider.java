@@ -1,17 +1,11 @@
 package net.eltown.apiserver.components.handler.player;
 
-import com.mongodb.MongoClient;
-import com.mongodb.MongoClientURI;
-import com.mongodb.client.MongoCollection;
 import net.eltown.apiserver.Server;
 import net.eltown.apiserver.components.Provider;
-import net.eltown.apiserver.components.config.Config;
 import net.eltown.apiserver.components.handler.player.data.SyncPlayer;
 import org.bson.Document;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 

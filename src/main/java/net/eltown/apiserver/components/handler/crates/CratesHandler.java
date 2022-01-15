@@ -4,7 +4,6 @@ import lombok.SneakyThrows;
 import net.eltown.apiserver.Server;
 import net.eltown.apiserver.components.Handler;
 import net.eltown.apiserver.components.handler.crates.data.CrateReward;
-import net.eltown.apiserver.components.tinyrabbit.TinyRabbitListener;
 
 public class CratesHandler extends Handler<CratesProvider> {
 

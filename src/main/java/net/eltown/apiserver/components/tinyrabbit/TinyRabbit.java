@@ -66,7 +66,7 @@ public class TinyRabbit {
                     .replyTo(replyQueueName)
                     .build();
 
-            this.channel.basicPublish("", channel, properties, call.getBytes(StandardCharsets.UTF_8));
+            this.channel.basicPublish("", "a2." + channel, properties, call.getBytes(StandardCharsets.UTF_8));
 
             final BlockingQueue<String> response = new ArrayBlockingQueue<>(1);
 
@@ -98,7 +98,7 @@ public class TinyRabbit {
                 callBuilder.append(arg).append("//");
             }
             final String call = callBuilder.substring(0, callBuilder.length() - 2);
-            this.channel.basicPublish("", channel, null, call.getBytes(StandardCharsets.UTF_8));
+            this.channel.basicPublish("", "a2." + channel, null, call.getBytes(StandardCharsets.UTF_8));
         } catch (final Exception ex) {
             if (this.throwExceptions) ex.printStackTrace();
         }

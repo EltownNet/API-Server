@@ -3,9 +3,7 @@ package net.eltown.apiserver.components.handler.ticketsystem;
 import lombok.SneakyThrows;
 import net.eltown.apiserver.Server;
 import net.eltown.apiserver.components.Handler;
-import net.eltown.apiserver.components.Provider;
 import net.eltown.apiserver.components.handler.ticketsystem.data.Ticket;
-import net.eltown.apiserver.components.tinyrabbit.TinyRabbitListener;
 
 import java.util.LinkedHashSet;
 import java.util.LinkedList;

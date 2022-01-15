@@ -135,7 +135,7 @@ public class BankProvider extends Provider {
             if (e.getOwner().equals(player)) builder.append(e.getAccount()).append("#");
         });
 
-        if (builder.toString().isEmpty()) return "null";
+        if (builder.toString().isEmpty()) return "null#";
 
         return builder.substring(0, builder.length() - 1);
     }

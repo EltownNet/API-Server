@@ -5,7 +5,6 @@ import net.eltown.apiserver.Server;
 import net.eltown.apiserver.components.Handler;
 import net.eltown.apiserver.components.handler.rewards.data.DailyReward;
 import net.eltown.apiserver.components.handler.rewards.data.RewardPlayer;
-import net.eltown.apiserver.components.tinyrabbit.TinyRabbitListener;
 
 import java.util.List;
 

@@ -3,7 +3,6 @@ package net.eltown.apiserver.components.handler.settings;
 import lombok.SneakyThrows;
 import net.eltown.apiserver.Server;
 import net.eltown.apiserver.components.Handler;
-import net.eltown.apiserver.components.tinyrabbit.TinyRabbitListener;
 
 public class SettingsHandler extends Handler<SettingsProvider> {
 

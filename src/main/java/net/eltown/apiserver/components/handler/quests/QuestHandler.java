@@ -5,7 +5,6 @@ import net.eltown.apiserver.Server;
 import net.eltown.apiserver.components.Handler;
 import net.eltown.apiserver.components.handler.quests.data.Quest;
 import net.eltown.apiserver.components.handler.quests.data.QuestPlayer;
-import net.eltown.apiserver.components.tinyrabbit.TinyRabbitListener;
 
 public class QuestHandler extends Handler<QuestProvider> {
 

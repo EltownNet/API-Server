@@ -1,14 +1,9 @@
 package net.eltown.apiserver.components.handler.ticketsystem;
 
-import com.mongodb.MongoClient;
-import com.mongodb.MongoClientURI;
-import com.mongodb.client.MongoCollection;
 import lombok.SneakyThrows;
 import net.eltown.apiserver.Server;
 import net.eltown.apiserver.components.Provider;
-import net.eltown.apiserver.components.config.Config;
 import net.eltown.apiserver.components.handler.ticketsystem.data.Ticket;
-import net.eltown.apiserver.components.tinyrabbit.TinyRabbit;
 import org.bson.Document;
 
 import java.text.DateFormat;

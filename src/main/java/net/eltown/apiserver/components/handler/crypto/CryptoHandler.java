@@ -7,7 +7,6 @@ import net.eltown.apiserver.components.handler.crypto.data.Transaction;
 import net.eltown.apiserver.components.handler.crypto.data.TransferPrices;
 import net.eltown.apiserver.components.handler.crypto.data.Wallet;
 import net.eltown.apiserver.components.handler.crypto.data.Worth;
-import net.eltown.apiserver.components.tinyrabbit.TinyRabbitListener;
 
 import java.util.Random;
 

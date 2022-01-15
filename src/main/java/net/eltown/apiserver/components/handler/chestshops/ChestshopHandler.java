@@ -53,6 +53,7 @@ public class ChestshopHandler extends Handler<ChestshopProvider> {
                                     .append(chestShop.getPrice()).append("#")
                                     .append(chestShop.getBankAccount()).append("-;-");
                         });
+                        if (chestShopDataBuilder.toString().isEmpty()) chestShopDataBuilder.append("null-;-");
                         final String chestShopData = chestShopDataBuilder.substring(0, chestShopDataBuilder.length() - 3);
 
                         final StringBuilder chestShopLicenseBuilder = new StringBuilder();

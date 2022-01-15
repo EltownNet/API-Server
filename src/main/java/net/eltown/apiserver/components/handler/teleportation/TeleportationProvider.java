@@ -1,15 +1,11 @@
 package net.eltown.apiserver.components.handler.teleportation;
 
-import com.mongodb.MongoClient;
-import com.mongodb.MongoClientURI;
-import com.mongodb.client.MongoCollection;
 import lombok.SneakyThrows;
 import net.eltown.apiserver.Server;
 import net.eltown.apiserver.components.Provider;
-import net.eltown.apiserver.components.config.Config;
+import net.eltown.apiserver.components.handler.teleportation.data.CachedTeleport;
 import net.eltown.apiserver.components.handler.teleportation.data.Home;
 import net.eltown.apiserver.components.handler.teleportation.data.Warp;
-import net.eltown.apiserver.components.tinyrabbit.TinyRabbit;
 import org.bson.Document;
 
 import java.util.*;
@@ -22,7 +18,7 @@ public class TeleportationProvider extends Provider {
     public final HashMap<String, Warp> warps = new HashMap<>();
     public final HashMap<String, List<String>> tpas = new HashMap<>();
 
-    public final HashMap<String, Home> cachedTeleportation = new HashMap<>();
+    public final HashMap<String, CachedTeleport> cachedTeleports = new HashMap<>();
 
     @SneakyThrows
     public TeleportationProvider(final Server server) {
@@ -236,11 +232,6 @@ public class TeleportationProvider extends Provider {
 
     public void removeTpa(final String target, final String player) {
         this.tpas.get(target).removeIf(e -> e.startsWith(player));
-        /*this.tpas.get(target).forEach(e -> {
-            if (e.startsWith(player)) {
-                this.tpas.get(target).remove(e);
-            }
-        });*/
     }
 
 }

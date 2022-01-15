@@ -1,16 +1,11 @@
 package net.eltown.apiserver.components.handler.groupmanager;
 
-import com.mongodb.MongoClient;
-import com.mongodb.MongoClientURI;
-import com.mongodb.client.MongoCollection;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import net.eltown.apiserver.Server;
 import net.eltown.apiserver.components.Provider;
-import net.eltown.apiserver.components.config.Config;
 import net.eltown.apiserver.components.handler.groupmanager.data.Group;
 import net.eltown.apiserver.components.handler.groupmanager.data.GroupedPlayer;
-import net.eltown.apiserver.components.tinyrabbit.TinyRabbit;
 import org.bson.Document;
 
 import java.util.ArrayList;

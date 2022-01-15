@@ -4,7 +4,6 @@ import lombok.SneakyThrows;
 import net.eltown.apiserver.Server;
 import net.eltown.apiserver.components.Handler;
 import net.eltown.apiserver.components.handler.giftkeys.data.Giftkey;
-import net.eltown.apiserver.components.tinyrabbit.TinyRabbitListener;
 
 import java.util.Arrays;
 import java.util.List;

@@ -1,12 +1,8 @@
 package net.eltown.apiserver.components.handler.crypto;
 
-import com.mongodb.MongoClient;
-import com.mongodb.MongoClientURI;
-import com.mongodb.client.MongoCollection;
 import lombok.Getter;
 import net.eltown.apiserver.Server;
 import net.eltown.apiserver.components.Provider;
-import net.eltown.apiserver.components.config.Config;
 import net.eltown.apiserver.components.handler.crypto.data.Transaction;
 import net.eltown.apiserver.components.handler.crypto.data.TransferPrices;
 import net.eltown.apiserver.components.handler.crypto.data.Wallet;

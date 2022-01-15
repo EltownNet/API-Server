@@ -5,7 +5,6 @@ import net.eltown.apiserver.Server;
 import net.eltown.apiserver.components.Handler;
 import net.eltown.apiserver.components.handler.level.data.Level;
 import net.eltown.apiserver.components.handler.level.data.LevelReward;
-import net.eltown.apiserver.components.tinyrabbit.TinyRabbitListener;
 
 public class LevelHandler extends Handler<LevelProvider> {
 

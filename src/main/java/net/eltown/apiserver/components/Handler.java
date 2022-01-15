@@ -4,7 +4,6 @@ import lombok.Getter;
 import net.eltown.apiserver.Server;
 import net.eltown.apiserver.components.data.Colors;
 import net.eltown.apiserver.components.data.LogLevel;
-import net.eltown.apiserver.components.handler.economy.EconomyProvider;
 import net.eltown.apiserver.components.tinyrabbit.TinyRabbit;
 import net.eltown.apiserver.components.tinyrabbit.TinyRabbitListener;
 

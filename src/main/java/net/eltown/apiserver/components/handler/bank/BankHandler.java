@@ -4,7 +4,6 @@ import lombok.SneakyThrows;
 import net.eltown.apiserver.Server;
 import net.eltown.apiserver.components.Handler;
 import net.eltown.apiserver.components.handler.bank.data.BankAccount;
-import net.eltown.apiserver.components.tinyrabbit.TinyRabbitListener;
 
 public class BankHandler extends Handler<BankProvider> {
 

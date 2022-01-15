@@ -1,18 +1,13 @@
 package net.eltown.apiserver.components.handler.chestshops;
 
-import com.mongodb.MongoClient;
-import com.mongodb.MongoClientURI;
-import com.mongodb.client.MongoCollection;
 import lombok.SneakyThrows;
 import net.eltown.apiserver.Server;
 import net.eltown.apiserver.components.Provider;
-import net.eltown.apiserver.components.config.Config;
 import net.eltown.apiserver.components.handler.chestshops.data.ChestShop;
 import net.eltown.apiserver.components.handler.chestshops.data.ChestShopLicense;
-import net.eltown.apiserver.components.tinyrabbit.TinyRabbit;
 import org.bson.Document;
 
-import java.util.*;
+import java.util.HashMap;
 import java.util.concurrent.CompletableFuture;
 
 public class ChestshopProvider extends Provider {
@@ -22,10 +17,10 @@ public class ChestshopProvider extends Provider {
 
     @SneakyThrows
     public ChestshopProvider(final Server server) {
-        super(server, "chestshop_data", "chestshop_licenses");
+        super(server, "chestshop_data_a2", "chestshop_licenses");
 
         server.log("ChestShops werden in den Cache geladen...");
-        for (final Document document : this.getCollection("chestshop_data").find()) {
+        for (final Document document : this.getCollection("chestshop_data_a2").find()) {
             this.cachedChestShops.put(document.getLong("_id"), new ChestShop(
                     document.getLong("_id"),
                     document.getDouble("signX"),
@@ -61,7 +56,7 @@ public class ChestshopProvider extends Provider {
 
         CompletableFuture.runAsync(() -> {
             try {
-                this.getCollection("chestshop_data").insertOne(new Document("_id", id)
+                this.getCollection("chestshop_data_a2").insertOne(new Document("_id", id)
                         .append("signX", signX)
                         .append("signY", signY)
                         .append("signZ", signZ)
@@ -86,7 +81,7 @@ public class ChestshopProvider extends Provider {
         this.cachedChestShops.get(id).setShopCount(u);
 
         CompletableFuture.runAsync(() -> {
-            this.getCollection("chestshop_data").updateOne(new Document("_id", id), new Document("$set", new Document("count", u)));
+            this.getCollection("chestshop_data_a2").updateOne(new Document("_id", id), new Document("$set", new Document("count", u)));
         });
     }
 
@@ -94,7 +89,7 @@ public class ChestshopProvider extends Provider {
         this.cachedChestShops.get(id).setPrice(u);
 
         CompletableFuture.runAsync(() -> {
-            this.getCollection("chestshop_data").updateOne(new Document("_id", id), new Document("$set", new Document("price", u)));
+            this.getCollection("chestshop_data_a2").updateOne(new Document("_id", id), new Document("$set", new Document("price", u)));
         });
     }
 
@@ -102,7 +97,7 @@ public class ChestshopProvider extends Provider {
         this.cachedChestShops.get(id).setItem(u);
 
         CompletableFuture.runAsync(() -> {
-            this.getCollection("chestshop_data").updateOne(new Document("_id", id), new Document("$set", new Document("item", u)));
+            this.getCollection("chestshop_data_a2").updateOne(new Document("_id", id), new Document("$set", new Document("item", u)));
         });
     }
 
@@ -110,7 +105,7 @@ public class ChestshopProvider extends Provider {
         this.cachedChestShops.remove(id);
 
         CompletableFuture.runAsync(() -> {
-            this.getCollection("chestshop_data").findOneAndDelete(new Document("_id", id));
+            this.getCollection("chestshop_data_a2").findOneAndDelete(new Document("_id", id));
         });
     }
 

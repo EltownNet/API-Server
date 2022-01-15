@@ -1,6 +1,9 @@
 package net.eltown.apiserver.internal;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 public class CommandHandler {
 
