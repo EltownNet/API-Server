@@ -40,7 +40,7 @@ public class TeleportationHandler extends Handler<TeleportationProvider> {
                     }
                     case REQUEST_TELEPORT -> {
                         this.getProvider().cachedTeleports.put(d[2], new CachedTeleport(d[1], d[3], d[2]));
-                        this.getProvider().getTinyRabbitClient().send("core.proxy.teleportation.receive", TeleportationCalls.REQUEST_TELEPORT_PLAYER.name(), d[3], d[4]);
+                        this.getProvider().getTinyRabbitClient().send("core.proxy.teleportation.receive", TeleportationCalls.REQUEST_TELEPORT_PLAYER.name(), d[2], d[3]);
                     }
                     case REQUEST_ACCEPT_TPA -> {
                         this.getProvider().removeTpa(delivery.getData()[1], delivery.getData()[2]);
