@@ -9,7 +9,6 @@ import org.bson.Document;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
@@ -20,26 +19,26 @@ public class GiftkeyProvider extends Provider {
 
     @SneakyThrows
     public GiftkeyProvider(final Server server) {
-        super(server, "giftkeys");
+        super(server, "a2_giftkeys");
 
         server.log("Giftkeys werden in den Cache geladen...");
-        for (final Document document : this.getCollection("giftkeys").find()) {
+        for (final Document document : this.getCollection("a2_giftkeys").find()) {
             this.giftkeys.put(document.getString("_id"), new Giftkey(
                     document.getString("_id"),
                     document.getInteger("maxUses"),
                     document.getList("uses", String.class),
                     document.getList("rewards", String.class),
-                    document.getList("marks", String.class)
+                    document.getList("marks", String.class),
+                    document.getLong("duration")
             ));
         }
         server.log(this.giftkeys.size() + " Giftkeys wurden in den Cache geladen...");
     }
 
-    public void createKey(final int maxUses, final List<String> rewards, List<String> marks, final Consumer<String> keyCallback) {
-        final String key = this.createKey(5) + "-" + this.createKey(5);
-        this.giftkeys.put(key, new Giftkey(key, maxUses, new ArrayList<>(), rewards, marks));
+    public void createKey(final String key, final int maxUses, final List<String> rewards, List<String> marks, final long duration, final Consumer<String> keyCallback) {
+        this.giftkeys.put(key, new Giftkey(key, maxUses, new ArrayList<>(), rewards, marks, duration));
         CompletableFuture.runAsync(() -> {
-            this.getCollection("giftkeys").insertOne(new Document("_id", key).append("maxUses", maxUses).append("uses", new ArrayList<>()).append("rewards", rewards).append("marks", marks));
+            this.getCollection("a2_giftkeys").insertOne(new Document("_id", key).append("maxUses", maxUses).append("uses", new ArrayList<>()).append("rewards", rewards).append("marks", marks).append("duration", duration));
         });
         keyCallback.accept(key);
     }
@@ -58,7 +57,7 @@ public class GiftkeyProvider extends Provider {
         list.add(player);
         giftkey.setUses(list);
         CompletableFuture.runAsync(() -> {
-            this.getCollection("giftkeys").updateOne(new Document("_id", key), new Document("$set", new Document("uses", list)));
+            this.getCollection("a2_giftkeys").updateOne(new Document("_id", key), new Document("$set", new Document("uses", list)));
 
             if (list.size() >= giftkey.getMaxUses()) this.deleteKey(key);
         });
@@ -98,7 +97,7 @@ public class GiftkeyProvider extends Provider {
             this.giftkeys.get(key).setMarks(list);
 
             CompletableFuture.runAsync(() -> {
-                this.getCollection("giftkeys").updateOne(new Document("_id", key), new Document("$set", new Document("marks", list)));
+                this.getCollection("a2_giftkeys").updateOne(new Document("_id", key), new Document("$set", new Document("marks", list)));
             });
         } catch (final Exception e) {
             e.printStackTrace();
@@ -108,19 +107,8 @@ public class GiftkeyProvider extends Provider {
     public void deleteKey(final String key) {
         this.giftkeys.remove(key);
         CompletableFuture.runAsync(() -> {
-            this.getCollection("giftkeys").findOneAndDelete(new Document("_id", key));
+            this.getCollection("a2_giftkeys").findOneAndDelete(new Document("_id", key));
         });
-    }
-
-    private String createKey(final int i) {
-        final String chars = "ABCDEFGHJKLMNOPQRSTUVWXYZ";
-        final StringBuilder stringBuilder = new StringBuilder();
-        final Random rnd = new Random();
-        while (stringBuilder.length() < i) {
-            int index = (int) (rnd.nextFloat() * chars.length());
-            stringBuilder.append(chars.charAt(index));
-        }
-        return stringBuilder.toString();
     }
 
 }

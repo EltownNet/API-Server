@@ -16,5 +16,6 @@ public class Giftkey {
     private List<String> uses;
     private List<String> rewards;
     private List<String> marks;
+    private long duration;
 
 }

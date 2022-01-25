@@ -21,9 +21,7 @@ public class GiftkeyHandler extends Handler<GiftkeyProvider> {
             this.getTinyRabbitListener().receive(delivery -> {
                 final String[] d = delivery.getData();
                 switch (GiftkeyCalls.valueOf(delivery.getKey().toUpperCase())) {
-                    case REQUEST_DELETE_KEY:
-                        this.getProvider().deleteKey(d[1]);
-                        break;
+                    case REQUEST_DELETE_KEY -> this.getProvider().deleteKey(d[1]);
                 }
             }, "API/Giftkeys[Receive]", "api.giftkeys.receive");
         });
@@ -33,21 +31,25 @@ public class GiftkeyHandler extends Handler<GiftkeyProvider> {
                 final String[] d = request.getData();
                 switch (GiftkeyCalls.valueOf(request.getKey().toUpperCase())) {
                     case REQUEST_CREATE_KEY:
-                        final int maxUses = Integer.parseInt(d[1]);
-                        final List<String> rewards = Arrays.asList(d[2].split(">:<"));
-                        final List<String> marks = Arrays.asList(d[3].split(">:<"));
-                        this.getProvider().createKey(maxUses, rewards, marks, key -> {
-                            request.answer(GiftkeyCalls.CALLBACK_NULL.name(), key);
-                        });
-                        break;
-                    case REQUEST_GET_KEY:
                         final String key = d[1];
                         if (!this.getProvider().keyExists(key)) {
+                            final int maxUses = Integer.parseInt(d[2]);
+                            final List<String> rewards = Arrays.asList(d[3].split(">:<"));
+                            final List<String> marks = Arrays.asList(d[4].split(">:<"));
+                            final long duration = Long.parseLong(d[5]);
+                            this.getProvider().createKey(key, maxUses, rewards, marks, duration, s -> {
+                                request.answer(GiftkeyCalls.CALLBACK_NULL.name(), s);
+                            });
+                        } else request.answer(GiftkeyCalls.CALLBACK_GIFTKEY_ALREADY_EXISTS.name(), "null");
+                        break;
+                    case REQUEST_GET_KEY:
+                        final String key1 = d[1];
+                        if (!this.getProvider().keyExists(key1)) {
                             request.answer(GiftkeyCalls.CALLBACK_NULL.name(), "null");
                             return;
                         }
-                        final Giftkey giftkey = this.getProvider().getGiftKey(key);
-                        final StringBuilder builder = new StringBuilder(key).append(">>").append(giftkey.getMaxUses()).append(">>");
+                        final Giftkey giftkey = this.getProvider().getGiftKey(key1);
+                        final StringBuilder builder = new StringBuilder(key1).append(">>").append(giftkey.getMaxUses()).append(">>").append(giftkey.getDuration()).append(">>");
 
                         String a = "null";
                         if (giftkey.getUses().size() != 0) {
@@ -77,16 +79,21 @@ public class GiftkeyHandler extends Handler<GiftkeyProvider> {
                         final String redeemKey = d[1];
                         final String player = d[2];
                         if (this.getProvider().keyExists(redeemKey)) {
+                            final Giftkey giftkey1 = this.getProvider().getGiftKey(redeemKey);
                             if (!this.getProvider().alreadyRedeemed(redeemKey, player)) {
-                                this.getProvider().redeemKey(redeemKey, player);
+                                if (giftkey1.getDuration() == -1 || giftkey1.getDuration() > System.currentTimeMillis()) {
+                                    this.getProvider().redeemKey(redeemKey, player);
 
-                                final Giftkey giftkey1 = this.getProvider().getGiftKey(redeemKey);
-                                final StringBuilder redeemBuilder = new StringBuilder();
-                                giftkey1.getRewards().forEach(e -> {
-                                    redeemBuilder.append(e).append(">:<");
-                                });
-                                final String redeemRewards = redeemBuilder.substring(0, redeemBuilder.length() - 3);
-                                request.answer(GiftkeyCalls.CALLBACK_REDEEMED.name(), redeemRewards);
+                                    final StringBuilder redeemBuilder = new StringBuilder();
+                                    giftkey1.getRewards().forEach(e -> {
+                                        redeemBuilder.append(e).append(">:<");
+                                    });
+                                    final String redeemRewards = redeemBuilder.substring(0, redeemBuilder.length() - 3);
+                                    request.answer(GiftkeyCalls.CALLBACK_REDEEMED.name(), redeemRewards);
+                                } else {
+                                    request.answer(GiftkeyCalls.CALLBACK_CODE_EXPIRED.name(), "null");
+                                    this.getProvider().deleteKey(giftkey1.getKey());
+                                }
                             } else request.answer(GiftkeyCalls.CALLBACK_ALREADY_REDEEMED.name(), "null");
                         } else request.answer(GiftkeyCalls.CALLBACK_NULL.name(), "null");
                         break;
