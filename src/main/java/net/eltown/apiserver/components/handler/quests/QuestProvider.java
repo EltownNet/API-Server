@@ -21,16 +21,14 @@ public class QuestProvider extends Provider {
 
     @SneakyThrows
     public QuestProvider(final Server server) {
-        super(server, "quests_quests", "quests_data");
+        super(server, "a2_quests_quests", "a2_quests_data");
 
         server.log("Quests werden in den Cache geladen...");
-        for (final Document document : this.getCollection("quests_quests").find()) {
+        for (final Document document : this.getCollection("a2_quests_quests").find()) {
             this.cachedQuests.put(document.getString("_id"), new Quest(
                     document.getString("_id"),
                     document.getString("displayName"),
-                    document.getString("description"),
-                    document.getString("data"),
-                    document.getInteger("required"),
+                    document.getList("data", String.class),
                     document.getLong("expire"),
                     document.getString("rewardData"),
                     document.getString("link")
@@ -39,13 +37,13 @@ public class QuestProvider extends Provider {
         server.log(this.cachedQuests.size() + " Quests wurden in den Cache geladen...");
 
         server.log("QuestDaten werden in den Cache geladen...");
-        for (final Document document : this.getCollection("quests_data").find()) {
+        for (final Document document : this.getCollection("a2_quests_data").find()) {
             final List<String> rawData = document.getList("data", String.class);
-            final List<QuestPlayer.QuestPlayerData> questPlayerData = new ArrayList<>();
+            final List<QuestPlayer.QuestData> questPlayerData = new ArrayList<>();
 
             for (final String s : rawData) {
                 final String[] sSplit = s.split("-:-");
-                questPlayerData.add(new QuestPlayer.QuestPlayerData(sSplit[0], Long.parseLong(sSplit[1]), Integer.parseInt(sSplit[2]), Integer.parseInt(sSplit[3])));
+                questPlayerData.add(new QuestPlayer.QuestData(sSplit[0], sSplit[1], sSplit[2], Integer.parseInt(sSplit[3]), Integer.parseInt(sSplit[4]), Long.parseLong(sSplit[5])));
             }
 
             this.cachedQuestPlayer.put(document.getString("_id"), new QuestPlayer(
@@ -56,15 +54,13 @@ public class QuestProvider extends Provider {
         server.log(this.cachedQuestPlayer.size() + " QuestDaten wurden in den Cache geladen...");
     }
 
-    public void createQuest(final String nameId, final String displayName, final String description, final String data, final int required, final long expire, final String rewardData, final String link) {
-        this.cachedQuests.put(nameId, new Quest(nameId, displayName, description, data, required, expire, rewardData, link));
+    public void createQuest(final String nameId, final String displayName, final List<String> data, final long expire, final String rewardData, final String link) {
+        this.cachedQuests.put(nameId, new Quest(nameId, displayName, data, expire, rewardData, link));
 
         CompletableFuture.runAsync(() -> {
-            this.getCollection("quests_quests").insertOne(new Document("_id", nameId)
+            this.getCollection("a2_quests_quests").insertOne(new Document("_id", nameId)
                     .append("displayName", displayName)
-                    .append("description", description)
                     .append("data", data)
-                    .append("required", required)
                     .append("expire", expire)
                     .append("rewardData", rewardData)
                     .append("link", link)
@@ -80,16 +76,16 @@ public class QuestProvider extends Provider {
         this.cachedQuests.remove(nameId);
 
         CompletableFuture.runAsync(() -> {
-            this.getCollection("quests_quests").findOneAndDelete(new Document("_id", nameId));
+            this.getCollection("a2_quests_quests").findOneAndDelete(new Document("_id", nameId));
         });
     }
 
-    public void updateQuest(final String nameId, final String displayName, final String description, final String data, final int required, final long expire, final String rewardData, final String link) {
+    public void updateQuest(final String nameId, final String displayName, final List<String> data, final long expire, final String rewardData, final String link) {
         this.cachedQuests.remove(nameId);
-        this.cachedQuests.put(nameId, new Quest(nameId, displayName, description, data, required, expire, rewardData, link));
+        this.cachedQuests.put(nameId, new Quest(nameId, displayName, data, expire, rewardData, link));
 
         CompletableFuture.runAsync(() -> {
-            this.getCollection("quests_quests").updateOne(new Document("_id", nameId), new Document("$set", new Document("displayName", displayName).append("description", description).append("data", data).append("required", required).append("expire", expire).append("rewardData", rewardData).append("link", link)));
+            this.getCollection("a2_quests_quests").updateOne(new Document("_id", nameId), new Document("$set", new Document("displayName", displayName).append("data", data).append("expire", expire).append("rewardData", rewardData).append("link", link)));
         });
     }
 
@@ -97,7 +93,7 @@ public class QuestProvider extends Provider {
         this.cachedQuestPlayer.put(player, new QuestPlayer(player, new ArrayList<>()));
 
         CompletableFuture.runAsync(() -> {
-            this.getCollection("quests_data").insertOne(new Document("_id", player).append("data", new ArrayList<String>()));
+            this.getCollection("a2_quests_data").insertOne(new Document("_id", player).append("data", new ArrayList<String>()));
         });
     }
 
@@ -106,41 +102,49 @@ public class QuestProvider extends Provider {
     }
 
     public void setQuestOnPlayer(final String player, final String questNameId) {
-        //this.checkIfQuestIsExpired(player);
         final Quest quest = this.cachedQuests.get(questNameId);
 
-        final List<QuestPlayer.QuestPlayerData> playerData = this.cachedQuestPlayer.get(player).getQuestPlayerData();
-        playerData.add(new QuestPlayer.QuestPlayerData(quest.getNameId(), (System.currentTimeMillis() + quest.getExpire()), quest.getRequired(), 0));
+        final List<QuestPlayer.QuestData> playerData = this.cachedQuestPlayer.get(player).getQuestPlayerData();
+        quest.getData().forEach(data -> {
+            final String[] splitData = data.split("-:-");
+            playerData.add(new QuestPlayer.QuestData(quest.getNameId(), splitData[0], splitData[1], 0, Integer.parseInt(splitData[2]), (System.currentTimeMillis() + quest.getExpire())));
+        });
         this.cachedQuestPlayer.get(player).setQuestPlayerData(playerData);
 
         CompletableFuture.runAsync(() -> {
-            final Document document = this.getCollection("quests_data").find(new Document("_id", player)).first();
+            final Document document = this.getCollection("a2_quests_data").find(new Document("_id", player)).first();
             assert document != null;
-            final List<String> list = document.getList("data", String.class);
-            list.add(quest.getNameId() + "-:-" + (System.currentTimeMillis() + quest.getExpire()) + "-:-" + quest.getRequired() + "-:-" + 0);
 
-            this.getCollection("quests_data").updateOne(new Document("_id", player), new Document("$set", new Document("data", list)));
+            final List<String> list = document.getList("data", String.class);
+            quest.getData().forEach(data -> {
+                final String[] splitData = data.split("-:-");
+                list.add(quest.getNameId() + "-:-" + splitData[0] + "-:-" + splitData[1] + "-:-0-:-" + Integer.parseInt(splitData[2]) + "-:-" + (System.currentTimeMillis() + quest.getExpire()));
+            });
+
+            this.getCollection("a2_quests_data").updateOne(new Document("_id", player), new Document("$set", new Document("data", list)));
         });
     }
 
-    public void updateQuestPlayerProgress(final String player, final String questNameId, final int current) {
-        //this.checkIfQuestIsExpired(player);
-        final QuestPlayer.QuestPlayerData questPlayerData = this.getQuestPlayerDataFromQuestId(player, questNameId);
+    public void updateQuestPlayerProgress(final String player, final String questNameId, final String questSubId, final int current) {
+        final QuestPlayer.QuestData questPlayerData = this.getQuestPlayerDataFromQuestId(player, questNameId, questSubId);
         this.cachedQuestPlayer.get(player).getQuestPlayerData().forEach(e -> {
-            if (e.getQuestNameId().equals(questNameId)) {
+            if (e.getQuestNameId().equals(questNameId) && e.getQuestSubId().equals(questSubId)) {
                 if (!(e.getCurrent() >= e.getRequired())) {
                     e.setCurrent(current);
 
                     CompletableFuture.runAsync(() -> {
-                        final Document document = this.getCollection("quests_data").find(new Document("_id", player)).first();
+                        final Document document = this.getCollection("a2_quests_data").find(new Document("_id", player)).first();
                         assert document != null;
                         final List<String> list = document.getList("data", String.class);
-                        list.removeIf(s -> s.startsWith(questNameId));
+                        list.stream().filter(s -> s.startsWith(questNameId + "-:-" + questSubId)).findFirst().ifPresent(v -> {
+                            final String[] oldData = v.split("-:-");
+                            list.removeIf(s -> s.startsWith(questNameId + "-:-" + questSubId));
 
-                        assert questPlayerData != null;
-                        list.add(questPlayerData.getQuestNameId() + "-:-" + questPlayerData.getExpire() + "-:-" + questPlayerData.getRequired() + "-:-" + current);
+                            assert questPlayerData != null;
+                            list.add(questNameId + "-:-" + questSubId + "-:-" + oldData[2] + "-:-" + current + "-:-" + Integer.parseInt(oldData[4]) + "-:-" + Long.parseLong(oldData[5]));
 
-                        this.getCollection("quests_data").updateOne(new Document("_id", player), new Document("$set", new Document("data", list)));
+                            this.getCollection("a2_quests_data").updateOne(new Document("_id", player), new Document("$set", new Document("data", list)));
+                        });
                     });
                 }
             }
@@ -148,30 +152,27 @@ public class QuestProvider extends Provider {
     }
 
     public void removeQuestFromPlayer(final String player, final String questNameId) {
-        final QuestPlayer.QuestPlayerData questPlayerData = this.getQuestPlayerDataFromQuestId(player, questNameId);
-        final List<QuestPlayer.QuestPlayerData> playerData = this.cachedQuestPlayer.get(player).getQuestPlayerData();
-        playerData.remove(questPlayerData);
+        final List<QuestPlayer.QuestData> playerData = this.cachedQuestPlayer.get(player).getQuestPlayerData();
+        playerData.removeIf(s -> s.getQuestNameId().equals(questNameId));
         this.cachedQuestPlayer.get(player).setQuestPlayerData(playerData);
 
         CompletableFuture.runAsync(() -> {
-            final Document document = this.getCollection("quests_data").find(new Document("_id", player)).first();
+            final Document document = this.getCollection("a2_quests_data").find(new Document("_id", player)).first();
             assert document != null;
             final List<String> list = document.getList("data", String.class);
-            assert questPlayerData != null;
-            list.removeIf(s -> s.startsWith(questPlayerData.getQuestNameId()));
+            list.removeIf(s -> s.startsWith(questNameId));
 
-            this.getCollection("quests_data").updateOne(new Document("_id", player), new Document("$set", new Document("data", list)));
+            this.getCollection("a2_quests_data").updateOne(new Document("_id", player), new Document("$set", new Document("data", list)));
         });
     }
 
-    private QuestPlayer.QuestPlayerData getQuestPlayerDataFromQuestId(final String player, final String questNameId) {
-        //this.checkIfQuestIsExpired(player);
-        final AtomicReference<QuestPlayer.QuestPlayerData> questPlayerData = new AtomicReference<>();
+    private QuestPlayer.QuestData getQuestPlayerDataFromQuestId(final String player, final String questNameId, final String questSubId) {
+        final AtomicReference<QuestPlayer.QuestData> questPlayerData = new AtomicReference<>();
 
         if (this.cachedQuestPlayer.get(player) == null || this.cachedQuestPlayer.get(player).getQuestPlayerData().isEmpty()) return null;
 
         this.cachedQuestPlayer.get(player).getQuestPlayerData().forEach(e -> {
-            if (e.getQuestNameId().equals(questNameId)) questPlayerData.set(e);
+            if (e.getQuestNameId().equals(questNameId) && e.getQuestSubId().equals(questSubId)) questPlayerData.set(e);
         });
 
         return questPlayerData.get();

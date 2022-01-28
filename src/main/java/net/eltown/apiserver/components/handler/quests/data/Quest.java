@@ -4,6 +4,8 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.List;
+
 @AllArgsConstructor
 @Getter
 @Setter
@@ -32,9 +34,7 @@ public class Quest {
 
     private final String nameId;
     private String displayName;
-    private String description;
-    private String data;
-    private int required;
+    private List<String> data;
     private long expire;
     private String rewardData;
     private String link;
