@@ -68,6 +68,21 @@ public class QuestProvider extends Provider {
         });
     }
 
+    public void createSubQuest(final String nameId, final String subId, final String description, final String data, final int required) {
+        final String dataEntry = nameId + "-:-" + subId + "-:-" + description + "-:-" + data + "-:-" + required;
+        this.cachedQuests.get(nameId).getData().add(dataEntry);
+
+        CompletableFuture.runAsync(() -> {
+            final Document document = this.getCollection("a2_quests_quests").find(new Document("_id", nameId)).first();
+            assert document != null;
+
+            final List<String> questData = document.getList("data", String.class);
+            questData.add(dataEntry);
+
+            this.getCollection("a2_quests_quests").updateOne(new Document("_id", nameId), new Document("$set", new Document("data", questData)));
+        });
+    }
+
     public boolean questExists(final String nameId) {
         return this.cachedQuests.containsKey(nameId);
     }
@@ -80,12 +95,47 @@ public class QuestProvider extends Provider {
         });
     }
 
+    public void removeSubQuest(final String nameId, final String subId) {
+        final List<String> list = new ArrayList<>(this.cachedQuests.get(nameId).getData());
+        list.removeIf(s -> s.startsWith(nameId + "-:-" + subId));
+        this.cachedQuests.get(nameId).setData(list);
+
+        CompletableFuture.runAsync(() -> {
+            /*final Document document = this.getCollection("a2_quests_quests").find(new Document("_id", nameId)).first();
+            assert document != null;
+
+            final List<String> questData = document.getList("data", String.class);
+            questData.removeIf(s -> s.startsWith(nameId + "-:-" + subId));*/
+
+            this.getCollection("a2_quests_quests").updateOne(new Document("_id", nameId), new Document("$set", new Document("data", list)));
+        });
+    }
+
     public void updateQuest(final String nameId, final String displayName, final List<String> data, final long expire, final String rewardData, final String link) {
         this.cachedQuests.remove(nameId);
         this.cachedQuests.put(nameId, new Quest(nameId, displayName, data, expire, rewardData, link));
 
         CompletableFuture.runAsync(() -> {
             this.getCollection("a2_quests_quests").updateOne(new Document("_id", nameId), new Document("$set", new Document("displayName", displayName).append("data", data).append("expire", expire).append("rewardData", rewardData).append("link", link)));
+        });
+    }
+
+    public void updateSubQuest(final String questNameId, final String questSubId, final String description, final String data, final int required) {
+        final String dataEntry = questNameId + "-:-" + questSubId + "-:-" + description + "-:-" + data + "-:-" + required;
+        final List<String> setData = new ArrayList<>(this.cachedQuests.get(questNameId).getData());
+        setData.removeIf(s -> s.startsWith(questNameId + "-:-" + questSubId));
+        setData.add(dataEntry);
+        this.cachedQuests.get(questNameId).setData(setData);
+
+        CompletableFuture.runAsync(() -> {
+            /*final Document document = this.getCollection("a2_quests_quests").find(new Document("_id", questNameId)).first();
+            assert document != null;
+
+            final List<String> questData = document.getList("data", String.class);
+            questData.removeIf(s -> s.startsWith(questNameId + "-:-" + questSubId));
+            questData.add(dataEntry);*/
+
+            this.getCollection("a2_quests_quests").updateOne(new Document("_id", questNameId), new Document("$set", new Document("data", setData)));
         });
     }
 

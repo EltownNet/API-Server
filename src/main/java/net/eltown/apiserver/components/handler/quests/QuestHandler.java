@@ -22,10 +22,13 @@ public class QuestHandler extends Handler<QuestProvider> {
                 final String[] d = delivery.getData();
                 switch (QuestCalls.valueOf(delivery.getKey().toUpperCase())) {
                     case REQUEST_CREATE_QUEST -> this.getProvider().createQuest(d[1], d[2], List.of(d[3].split("-#-")), Long.parseLong(d[4]), d[5], d[6]);
+                    case REQUEST_CREATE_SUB_QUEST -> this.getProvider().createSubQuest(d[1], d[2], d[3], d[4], Integer.parseInt(d[5]));
                     case REQUEST_REMOVE_QUEST -> this.getProvider().removeQuest(d[1]);
+                    case REQUEST_REMOVE_SUB_QUEST -> this.getProvider().removeSubQuest(d[1], d[2]);
                     case REQUEST_SET_PLAYER_QUEST -> this.getProvider().setQuestOnPlayer(d[1], d[2]);
                     case REQUEST_REMOVE_PLAYER_QUEST -> this.getProvider().removeQuestFromPlayer(d[1], d[2]);
                     case REQUEST_UPDATE_QUEST -> this.getProvider().updateQuest(d[1], d[2], List.of(d[3].split("-#-")), Long.parseLong(d[4]), d[5], d[6]);
+                    case REQUEST_UPDATE_SUB_QUEST -> this.getProvider().updateSubQuest(d[1], d[2], d[3], d[4], Integer.parseInt(d[5]));
                     case REQUEST_UPDATE_PLAYER_DATA -> this.getProvider().updateQuestPlayerProgress(d[1], d[2], d[3], Integer.parseInt(d[4]));
                 }
             }, "API/Quests[Receive]", "api.quests.receive");
