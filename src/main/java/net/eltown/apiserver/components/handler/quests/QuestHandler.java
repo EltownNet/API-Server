@@ -29,7 +29,7 @@ public class QuestHandler extends Handler<QuestProvider> {
                     case REQUEST_REMOVE_PLAYER_QUEST -> this.getProvider().removeQuestFromPlayer(d[1], d[2]);
                     case REQUEST_UPDATE_QUEST -> this.getProvider().updateQuest(d[1], d[2], List.of(d[3].split("-#-")), Long.parseLong(d[4]), d[5], d[6]);
                     case REQUEST_UPDATE_SUB_QUEST -> this.getProvider().updateSubQuest(d[1], d[2], d[3], d[4], Integer.parseInt(d[5]));
-                    case REQUEST_UPDATE_PLAYER_DATA -> this.getProvider().updateQuestPlayerProgress(d[1], d[2], d[3], Integer.parseInt(d[4]));
+                    case REQUEST_UPDATE_PLAYER_DATA -> this.getProvider().updatePlayerData(d[1], List.of(d[2].split("-#-")));
                 }
             }, "API/Quests[Receive]", "api.quests.receive");
         });

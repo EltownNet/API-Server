@@ -154,10 +154,10 @@ public class QuestProvider extends Provider {
     public void setQuestOnPlayer(final String player, final String questNameId) {
         final Quest quest = this.cachedQuests.get(questNameId);
 
-        final List<QuestPlayer.QuestData> playerData = this.cachedQuestPlayer.get(player).getQuestPlayerData();
+        final List<QuestPlayer.QuestData> playerData = new ArrayList<>(this.cachedQuestPlayer.get(player).getQuestPlayerData());
         quest.getData().forEach(data -> {
             final String[] splitData = data.split("-:-");
-            playerData.add(new QuestPlayer.QuestData(quest.getNameId(), splitData[0], splitData[1], 0, Integer.parseInt(splitData[2]), (System.currentTimeMillis() + quest.getExpire())));
+            playerData.add(new QuestPlayer.QuestData(splitData[0], splitData[1], splitData[3], 0, Integer.parseInt(splitData[4]), (System.currentTimeMillis() + quest.getExpire())));
         });
         this.cachedQuestPlayer.get(player).setQuestPlayerData(playerData);
 
@@ -168,41 +168,28 @@ public class QuestProvider extends Provider {
             final List<String> list = document.getList("data", String.class);
             quest.getData().forEach(data -> {
                 final String[] splitData = data.split("-:-");
-                list.add(quest.getNameId() + "-:-" + splitData[0] + "-:-" + splitData[1] + "-:-0-:-" + Integer.parseInt(splitData[2]) + "-:-" + (System.currentTimeMillis() + quest.getExpire()));
+                list.add(splitData[0] + "-:-" + splitData[1] + "-:-" + splitData[3] + "-:-0-:-" + Integer.parseInt(splitData[4]) + "-:-" + (System.currentTimeMillis() + quest.getExpire()));
             });
 
             this.getCollection("a2_quests_data").updateOne(new Document("_id", player), new Document("$set", new Document("data", list)));
         });
     }
 
-    public void updateQuestPlayerProgress(final String player, final String questNameId, final String questSubId, final int current) {
-        final QuestPlayer.QuestData questPlayerData = this.getQuestPlayerDataFromQuestId(player, questNameId, questSubId);
-        this.cachedQuestPlayer.get(player).getQuestPlayerData().forEach(e -> {
-            if (e.getQuestNameId().equals(questNameId) && e.getQuestSubId().equals(questSubId)) {
-                if (!(e.getCurrent() >= e.getRequired())) {
-                    e.setCurrent(current);
+    public void updatePlayerData(final String player, final List<String> data) {
+        final List<QuestPlayer.QuestData> dataSet = new ArrayList<>();
+        data.forEach(e -> {
+            final String[] eSplit = e.split("-:-");
+            dataSet.add(new QuestPlayer.QuestData(eSplit[0], eSplit[1], eSplit[2], Integer.parseInt(eSplit[3]), Integer.parseInt(eSplit[4]), Long.parseLong(eSplit[5])));
+        });
+        this.cachedQuestPlayer.get(player).setQuestPlayerData(dataSet);
 
-                    CompletableFuture.runAsync(() -> {
-                        final Document document = this.getCollection("a2_quests_data").find(new Document("_id", player)).first();
-                        assert document != null;
-                        final List<String> list = document.getList("data", String.class);
-                        list.stream().filter(s -> s.startsWith(questNameId + "-:-" + questSubId)).findFirst().ifPresent(v -> {
-                            final String[] oldData = v.split("-:-");
-                            list.removeIf(s -> s.startsWith(questNameId + "-:-" + questSubId));
-
-                            assert questPlayerData != null;
-                            list.add(questNameId + "-:-" + questSubId + "-:-" + oldData[2] + "-:-" + current + "-:-" + Integer.parseInt(oldData[4]) + "-:-" + Long.parseLong(oldData[5]));
-
-                            this.getCollection("a2_quests_data").updateOne(new Document("_id", player), new Document("$set", new Document("data", list)));
-                        });
-                    });
-                }
-            }
+        CompletableFuture.runAsync(() -> {
+            this.getCollection("a2_quests_data").updateOne(new Document("_id", player), new Document("$set", new Document("data", data)));
         });
     }
 
     public void removeQuestFromPlayer(final String player, final String questNameId) {
-        final List<QuestPlayer.QuestData> playerData = this.cachedQuestPlayer.get(player).getQuestPlayerData();
+        final List<QuestPlayer.QuestData> playerData = new ArrayList<>(this.cachedQuestPlayer.get(player).getQuestPlayerData());
         playerData.removeIf(s -> s.getQuestNameId().equals(questNameId));
         this.cachedQuestPlayer.get(player).setQuestPlayerData(playerData);
 
