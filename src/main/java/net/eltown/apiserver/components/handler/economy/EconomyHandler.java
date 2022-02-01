@@ -14,18 +14,19 @@ public class EconomyHandler extends Handler<EconomyProvider> {
 
     public void startCallbacking() {
         this.getServer().getExecutor().execute(() -> {
+            this.getTinyRabbitListener().receive(delivery -> {
+                final String[] d = delivery.getData();
+                switch (EconomyCalls.valueOf(delivery.getKey().toUpperCase())) {
+                    case REQUEST_CREATEACCOUNT -> this.getProvider().create(d[1], Double.parseDouble(d[2]));
+                    case REQUEST_SETMONEY -> this.getProvider().set(d[1], Double.parseDouble(d[2]));
+                }
+            }, "API/Economy[Receive]", "api.economy.receive");
+        });
+        this.getServer().getExecutor().execute(() -> {
             this.getTinyRabbitListener().callback((request -> {
                 switch (EconomyCalls.valueOf(request.getKey().toUpperCase())) {
                     case REQUEST_GETMONEY -> request.answer(EconomyCalls.CALLBACK_MONEY.name(), String.valueOf(this.getProvider().get(request.getData()[1])));
-                    case REQUEST_SETMONEY -> {
-                        this.getProvider().set(request.getData()[1], Double.parseDouble(request.getData()[2]));
-                        request.answer(EconomyCalls.CALLBACK_NULL.name());
-                    }
                     case REQUEST_ACCOUNTEXISTS -> request.answer(EconomyCalls.CALLBACK_ACCOUNTEXISTS.name(), String.valueOf(this.getProvider().has(request.getData()[1])));
-                    case REQUEST_CREATEACCOUNT -> {
-                        this.getProvider().create(request.getData()[1], Double.parseDouble(request.getData()[2]));
-                        request.answer(EconomyCalls.CALLBACK_NULL.name());
-                    }
                     case REQUEST_GETALL -> request.answer(EconomyCalls.CALLBACK_GETALL.name(), this.getProvider().getAll().toArray(new String[0]));
                 }
             }), "API/Economy[Callback]", "api.economy.callback");
