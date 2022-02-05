@@ -70,7 +70,7 @@ public class RewardProvider extends Provider {
         this.rewardPlayers.put(player, new RewardPlayer(player, 0, 0));
 
         CompletableFuture.runAsync(() -> {
-            this.getCollection("a2_rewards_playerdata").insertOne(new Document("_id", player).append("day", 0).append("lastReward", (long) 0).append("onlineTime", (long) 0));
+            this.getCollection("a2_rewards_playerdata").insertOne(new Document("_id", player).append("day", 0).append("lastReward", (long) 0));
         });
     }
 
@@ -106,7 +106,7 @@ public class RewardProvider extends Provider {
         this.rewardPlayers.get(player).setLastReward(0);
 
         CompletableFuture.runAsync(() -> {
-            this.getCollection("a2_rewards_playerdata").updateOne(new Document("_id", player), new Document("$set", new Document("day", 0).append("lastReward", 0L).append("onlineTime", 0L)));
+            this.getCollection("a2_rewards_playerdata").updateOne(new Document("_id", player), new Document("$set", new Document("day", 0).append("lastReward", 0L)));
         });
     }
 
