@@ -42,7 +42,7 @@ public class RewardHandler extends Handler<RewardProvider> {
                             this.getProvider().createPlayerAccount(d[1]);
                         }
                         final RewardPlayer rewardPlayer = this.getProvider().rewardPlayers.get(d[1]);
-                        request.answer(RewardCalls.CALLBACK_PLAYER_DATA.name(), rewardPlayer.getPlayer(), String.valueOf(rewardPlayer.getDay()), String.valueOf(rewardPlayer.getLastReward()), String.valueOf(rewardPlayer.getOnlineTime()));
+                        request.answer(RewardCalls.CALLBACK_PLAYER_DATA.name(), rewardPlayer.getPlayer(), String.valueOf(rewardPlayer.getDay()), String.valueOf(rewardPlayer.getLastReward()));
                     }
                     case REQUEST_REWARDS -> {
                         final List<DailyReward> rewards = this.getProvider().getRewardsByDay(Integer.parseInt(d[1]));

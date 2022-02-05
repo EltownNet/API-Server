@@ -12,6 +12,5 @@ public class RewardPlayer {
     private final String player;
     private int day;
     private long lastReward;
-    private long onlineTime;
 
 }
