@@ -17,10 +17,10 @@ public class CratesProvider extends Provider {
 
     @SneakyThrows
     public CratesProvider(final Server server) {
-        super(server, "crate_data", "crate_player_data");
+        super(server, "a2_crate_data", "crate_player_data");
 
         server.log("Crate-Reward-Daten werden in den Cache geladen...");
-        for (final Document document : this.getCollection("crate_data").find()) {
+        for (final Document document : this.getCollection("a2_crate_data").find()) {
             this.cachedCrateRewards.put(document.getString("_id"),
                     new CrateReward(
                             document.getString("_id"),
@@ -89,7 +89,7 @@ public class CratesProvider extends Provider {
         this.cachedCrateRewards.put(id, new CrateReward(id, crate, displayName, chance, data));
 
         CompletableFuture.runAsync(() -> {
-            this.getCollection("crate_data").insertOne(new Document("_id", id)
+            this.getCollection("a2_crate_data").insertOne(new Document("_id", id)
                     .append("crate", crate)
                     .append("displayName", displayName)
                     .append("chance", chance)
@@ -101,7 +101,7 @@ public class CratesProvider extends Provider {
     public void deleteCrateReward(final String id) {
         this.cachedCrateRewards.remove(id);
 
-        CompletableFuture.runAsync(() -> this.getCollection("crate_data").findOneAndDelete(new Document("_id", id)));
+        CompletableFuture.runAsync(() -> this.getCollection("a2_crate_data").findOneAndDelete(new Document("_id", id)));
     }
 
     public void updateCrateReward(final String id, final String crate, final String displayName, final int chance, final String data) {
@@ -112,7 +112,7 @@ public class CratesProvider extends Provider {
         crateReward.setData(data);
 
         CompletableFuture.runAsync(() -> {
-            this.getCollection("crate_data").updateOne(new Document("_id", id), new Document("$set", new Document("crate", crate).append("displayName", displayName).append("chance", chance).append("data", data)));
+            this.getCollection("a2_crate_data").updateOne(new Document("_id", id), new Document("$set", new Document("crate", crate).append("displayName", displayName).append("chance", chance).append("data", data)));
         });
     }
 
