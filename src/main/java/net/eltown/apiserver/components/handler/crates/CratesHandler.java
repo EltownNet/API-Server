@@ -3,7 +3,10 @@ package net.eltown.apiserver.components.handler.crates;
 import lombok.SneakyThrows;
 import net.eltown.apiserver.Server;
 import net.eltown.apiserver.components.Handler;
+import net.eltown.apiserver.components.handler.crates.data.CratePlayer;
 import net.eltown.apiserver.components.handler.crates.data.CrateReward;
+
+import java.util.HashMap;
 
 public class CratesHandler extends Handler<CratesProvider> {
 
@@ -48,7 +51,7 @@ public class CratesHandler extends Handler<CratesProvider> {
                     }
                     case REQUEST_PLAYER_DATA -> {
                         final StringBuilder builder1 = new StringBuilder();
-                        this.getProvider().cachedCratePlayers.get(d[1]).getData().forEach((k, v) -> {
+                        this.getProvider().cachedCratePlayers.getOrDefault(d[1], new CratePlayer(d[1], new HashMap<>())).getData().forEach((k, v) -> {
                             builder1.append(k).append(":").append(v).append("#");
                         });
                         if (builder1.length() == 0) builder1.append("null#");

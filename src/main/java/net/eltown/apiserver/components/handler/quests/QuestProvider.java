@@ -70,7 +70,9 @@ public class QuestProvider extends Provider {
 
     public void createSubQuest(final String nameId, final String subId, final String description, final String data, final int required) {
         final String dataEntry = nameId + "-:-" + subId + "-:-" + description + "-:-" + data + "-:-" + required;
-        this.cachedQuests.get(nameId).getData().add(dataEntry);
+        final List<String> dataEntries = new ArrayList<>(this.cachedQuests.get(nameId).getData());
+        dataEntries.add(dataEntry);
+        this.cachedQuests.get(nameId).setData(dataEntries);
 
         CompletableFuture.runAsync(() -> {
             final Document document = this.getCollection("a2_quests_quests").find(new Document("_id", nameId)).first();

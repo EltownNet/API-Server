@@ -2,86 +2,68 @@ package net.eltown.apiserver.components.handler.player;
 
 import net.eltown.apiserver.Server;
 import net.eltown.apiserver.components.Provider;
-import net.eltown.apiserver.components.handler.player.data.SyncPlayer;
+import net.eltown.apiserver.components.handler.player.data.Player;
 import org.bson.Document;
 
 import java.util.HashMap;
-import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 public class PlayerProvider extends Provider {
 
-    private final Map<String, SyncPlayer> players = new HashMap<>();
+    public final HashMap<UUID, Player> cachedPlayers = new HashMap<>();
 
     public PlayerProvider(final Server server) {
-        super(server, "a2_players");
-        server.log("Spieler werden in den Cache geladen...");
+        super(server, "player_data");
 
-        for (Document document : this.getCollection("a2_players").find()) {
-            this.players.put(document.getString("_id"),
-                    new SyncPlayer(
-                            document.getString("inventory"),
-                            document.getString("armorInventory"),
-                            document.getString("enderchest"),
-                            document.getString("foodLevel"),
-                            document.getString("saturation"),
-                            document.getString("exhaustion"),
-                            document.getString("selectedSlot"),
-                            document.getString("potionEffects"),
-                            document.getString("totalExperience"),
-                            document.getString("level"),
-                            document.getString("experience"),
-                            document.getString("gamemode"),
-                            document.getString("flying"),
-                            true
+        server.log("Spielerdaten werden in den Cache geladen...");
+        for (final Document document : this.getCollection("player_data").find()) {
+            this.cachedPlayers.put(UUID.fromString(document.getString("_id")),
+                    new Player(
+                            UUID.fromString(document.getString("_id")),
+                            document.getString("name"),
+                            document.getLong("firstLogin"),
+                            document.getLong("lastLogin")
                     )
             );
         }
-        server.log(this.players.size() + " Spieler wurden in den Cache geladen.");
+        server.log(this.cachedPlayers.size() + " Spielerdaten wurden in den Cache geladen.");
     }
 
-    public SyncPlayer get(String id) {
-        return players.getOrDefault(id, new SyncPlayer("", "", "", "20", "20", "20", "0", "", "0", "0", "0", "SURVIVAL", "false", true));
-    }
+    public void createPlayerData(final UUID uuid, final String player) {
+        this.cachedPlayers.put(uuid, new Player(uuid, player, System.currentTimeMillis(), 0));
 
-    public void set(String id, SyncPlayer player) {
-        this.players.put(id, player);
         CompletableFuture.runAsync(() -> {
-            Document document = this.getCollection("a2_players").find(new Document("_id", id)).first();
-            if (document != null) {
-                this.getCollection("a2_players").updateOne(new Document("_id", id), new Document("$set",
-                        new Document("inventory", player.getInventory())
-                        .append("armorInventory", player.getArmorInventory())
-                        .append("enderchest", player.getEnderchest())
-                        .append("foodLevel", player.getFoodLevel())
-                        .append("saturation", player.getSaturation())
-                        .append("exhaustion", player.getExhaustion())
-                        .append("selectedSlot", player.getSelectedSlot())
-                        .append("potionEffects", player.getPotionEffects())
-                        .append("totalExperience", player.getTotalExperience())
-                        .append("level", player.getLevel())
-                        .append("experience", player.getExperience())
-                        .append("gamemode", player.getGamemode())
-                        .append("flying", player.getFlying())
-                ));
-            } else {
-                this.getCollection("a2_players").insertOne(new Document("_id", id)
-                        .append("inventory", player.getInventory())
-                        .append("armorInventory", player.getArmorInventory())
-                        .append("enderchest", player.getEnderchest())
-                        .append("foodLevel", player.getFoodLevel())
-                        .append("saturation", player.getSaturation())
-                        .append("exhaustion", player.getExhaustion())
-                        .append("selectedSlot", player.getSelectedSlot())
-                        .append("potionEffects", player.getPotionEffects())
-                        .append("totalExperience", player.getTotalExperience())
-                        .append("level", player.getLevel())
-                        .append("experience", player.getExperience())
-                        .append("gamemode", player.getGamemode())
-                        .append("flying", player.getFlying())
-                );
-            }
+            this.getCollection("player_data").insertOne(new Document("_id", uuid.toString())
+                    .append("name", player)
+                    .append("firstLogin", System.currentTimeMillis())
+                    .append("lastLogin", 0L)
+            );
         });
+    }
+
+    public void setLastLogin(final UUID uuid) {
+        this.cachedPlayers.get(uuid).setLastLogin(System.currentTimeMillis());
+
+        CompletableFuture.runAsync(() -> {
+            this.getCollection("player_data").updateOne(new Document("_id", uuid.toString()), new Document("$set", new Document("lastLogin", System.currentTimeMillis())));
+        });
+    }
+
+    public void updateName(final UUID uuid, final String player) {
+        this.cachedPlayers.get(uuid).setName(player);
+
+        CompletableFuture.runAsync(() -> {
+            this.getCollection("player_data").updateOne(new Document("_id", uuid.toString()), new Document("$set", new Document("name", player)));
+        });
+    }
+
+    public String getPlayer(final UUID uuid) {
+        final StringBuilder builder = new StringBuilder("");
+        final Player player = this.cachedPlayers.get(uuid);
+        if (player == null) builder.append("null");
+        else builder.append(player.getUUID()).append(";").append(player.getName()).append(";").append(player.getFirstLogin()).append(";").append(player.getLastLogin());
+        return builder.toString();
     }
 
 }

@@ -1,4 +1,4 @@
-package net.eltown.apiserver.components.handler.player.data;
+package net.eltown.apiserver.components.handler.sync.data;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

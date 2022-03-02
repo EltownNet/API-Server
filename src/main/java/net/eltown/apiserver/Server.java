@@ -18,6 +18,7 @@ import net.eltown.apiserver.components.handler.giftkeys.GiftkeyHandler;
 import net.eltown.apiserver.components.handler.groupmanager.GroupHandler;
 import net.eltown.apiserver.components.handler.level.LevelHandler;
 import net.eltown.apiserver.components.handler.player.PlayerHandler;
+import net.eltown.apiserver.components.handler.sync.SyncHandler;
 import net.eltown.apiserver.components.handler.quests.QuestHandler;
 import net.eltown.apiserver.components.handler.rewards.RewardHandler;
 import net.eltown.apiserver.components.handler.settings.SettingsHandler;
@@ -61,7 +62,7 @@ public class Server {
         config.save();
         if (!config.exists("LogLevel")) config.set("LogLevel", 1);
         if (!config.exists("MongoDB")) {
-            config.set("MongoDB.Connection", "mongodb://root:Qco7TDqoYq3RXq4pA3y7ETQTK6AgqzmTtRGLsgbN@45.138.50.23:27017/admin?authSource=admin");
+            config.set("MongoDB.Connection", "mongodb://root:Qco7TDqoYq3RXq4pA3y7ETQTK6AgqzmTtRGLsgbN@45.89.124.42:27017/admin?authSource=admin");
             config.set("MongoDB.Database", "eltown");
         }
         final int logLevel = config.getInt("LogLevel");
@@ -71,7 +72,7 @@ public class Server {
         this.registerHandler(
                 new EconomyHandler(this),
                 new CryptoHandler(this),
-                new PlayerHandler(this),
+                new SyncHandler(this),
                 new GroupHandler(this),
                 new TeleportationHandler(this),
                 new TicketHandler(this),
@@ -86,7 +87,8 @@ public class Server {
                 new SettingsHandler(this),
                 new CratesHandler(this),
                 new ChestshopHandler(this),
-                new AssociationHandler(this)
+                new AssociationHandler(this),
+                new PlayerHandler(this)
         );
 
         this.log("Server wurde erfolgreich gestartet.");
