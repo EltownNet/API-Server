@@ -98,74 +98,56 @@ public class GroupProvider extends Provider {
     }
 
     public void addPermission(final String group, final String permission) {
-        final Group sGroup = this.groups.get(group);
-        sGroup.getPermissions().add(permission);
+        final List<String> permissions = new ArrayList<>(this.groups.get(group).getPermissions());
+        permissions.add(permission);
+        this.groups.get(group).setPermissions(permissions);
         CompletableFuture.runAsync(() -> {
-            final Document document = this.getCollection("group_groups").find(new Document("group", group)).first();
-            assert document != null;
-            final List<String> list = document.getList("permissions", String.class);
-            list.add(permission);
-            this.getCollection("group_groups").updateOne(new Document("group", group), new Document("$set", new Document("permissions", list)));
+            this.getCollection("group_groups").updateOne(new Document("group", group), new Document("$set", new Document("permissions", permissions)));
         });
     }
 
     public void removePermission(final String group, final String permission) {
-        final Group sGroup = this.groups.get(group);
-        sGroup.getPermissions().remove(permission);
+        final List<String> permissions = new ArrayList<>(this.groups.get(group).getPermissions());
+        permissions.remove(permission);
+        this.groups.get(group).setPermissions(permissions);
         CompletableFuture.runAsync(() -> {
-            final Document document = this.getCollection("group_groups").find(new Document("group", group)).first();
-            assert document != null;
-            final List<String> list = document.getList("permissions", String.class);
-            list.remove(permission);
-            this.getCollection("group_groups").updateOne(new Document("group", group), new Document("$set", new Document("permissions", list)));
+            this.getCollection("group_groups").updateOne(new Document("group", group), new Document("$set", new Document("permissions", permissions)));
         });
     }
 
     public void addPlayerPermission(final String player, final String permission) {
-        final GroupedPlayer sGroup = this.groupedPlayers.get(player);
-        sGroup.getPermissions().add(permission);
+        final List<String> permissions = new ArrayList<>(this.groupedPlayers.get(player).getPermissions());
+        permissions.add(permission);
+        this.groupedPlayers.get(player).setPermissions(permissions);
         CompletableFuture.runAsync(() -> {
-            final Document document = this.getCollection("group_players").find(new Document("_id", player)).first();
-            assert document != null;
-            final List<String> list = document.getList("permissions", String.class);
-            list.add(permission);
-            this.getCollection("group_players").updateOne(new Document("_id", player), new Document("$set", new Document("permissions", list)));
+            this.getCollection("group_players").updateOne(new Document("_id", player), new Document("$set", new Document("permissions", permissions)));
         });
     }
 
     public void removePlayerPermission(final String player, final String permission) {
-        final GroupedPlayer sGroup = this.groupedPlayers.get(player);
-        sGroup.getPermissions().remove(permission);
+        final List<String> permissions = new ArrayList<>(this.groupedPlayers.get(player).getPermissions());
+        permissions.remove(permission);
+        this.groupedPlayers.get(player).setPermissions(permissions);
         CompletableFuture.runAsync(() -> {
-            final Document document = this.getCollection("group_players").find(new Document("_id", player)).first();
-            assert document != null;
-            final List<String> list = document.getList("permissions", String.class);
-            list.remove(permission);
-            this.getCollection("group_players").updateOne(new Document("_id", player), new Document("$set", new Document("permissions", list)));
+            this.getCollection("group_players").updateOne(new Document("_id", player), new Document("$set", new Document("permissions", permissions)));
         });
     }
 
     public void addInheritance(final String group, final String inheritance) {
-        final Group sGroup = this.groups.get(group);
-        sGroup.getInheritances().add(inheritance);
+        final List<String> inheritances = new ArrayList<>(this.groups.get(group).getInheritances());
+        inheritances.add(inheritance);
+        this.groups.get(group).setInheritances(inheritances);
         CompletableFuture.runAsync(() -> {
-            final Document document = this.getCollection("group_groups").find(new Document("group", group)).first();
-            assert document != null;
-            final List<String> list = document.getList("inheritances", String.class);
-            list.add(inheritance);
-            this.getCollection("group_groups").updateOne(new Document("group", group), new Document("$set", new Document("inheritances", list)));
+            this.getCollection("group_groups").updateOne(new Document("group", group), new Document("$set", new Document("inheritances", inheritances)));
         });
     }
 
     public void removeInheritance(final String group, final String inheritance) {
-        final Group sGroup = this.groups.get(group);
-        sGroup.getInheritances().remove(inheritance);
+        final List<String> inheritances = new ArrayList<>(this.groups.get(group).getInheritances());
+        inheritances.remove(inheritance);
+        this.groups.get(group).setInheritances(inheritances);
         CompletableFuture.runAsync(() -> {
-            final Document document = this.getCollection("group_groups").find(new Document("group", group)).first();
-            assert document != null;
-            final List<String> list = document.getList("inheritances", String.class);
-            list.remove(inheritance);
-            this.getCollection("group_groups").updateOne(new Document("group", group), new Document("$set", new Document("inheritances", list)));
+            this.getCollection("group_groups").updateOne(new Document("group", group), new Document("$set", new Document("inheritances", inheritances)));
         });
     }
 
