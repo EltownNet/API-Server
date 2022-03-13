@@ -17,6 +17,7 @@ import net.eltown.apiserver.components.handler.friends.FriendHandler;
 import net.eltown.apiserver.components.handler.giftkeys.GiftkeyHandler;
 import net.eltown.apiserver.components.handler.groupmanager.GroupHandler;
 import net.eltown.apiserver.components.handler.level.LevelHandler;
+import net.eltown.apiserver.components.handler.passes.PassHandler;
 import net.eltown.apiserver.components.handler.player.PlayerHandler;
 import net.eltown.apiserver.components.handler.sync.SyncHandler;
 import net.eltown.apiserver.components.handler.quests.QuestHandler;
@@ -88,7 +89,8 @@ public class Server {
                 new CratesHandler(this),
                 new ChestshopHandler(this),
                 new AssociationHandler(this),
-                new PlayerHandler(this)
+                new PlayerHandler(this),
+                new PassHandler(this)
         );
 
         this.log("Server wurde erfolgreich gestartet.");
